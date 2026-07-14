@@ -1,0 +1,142 @@
+import 'package:equatable/equatable.dart';
+
+enum NetworkProvider { mtn, glo, airtel, nineMobile }
+
+extension NetworkProviderX on NetworkProvider {
+  String get label {
+    switch (this) {
+      case NetworkProvider.mtn:
+        return 'MTN';
+      case NetworkProvider.glo:
+        return 'Glo';
+      case NetworkProvider.airtel:
+        return 'Airtel';
+      case NetworkProvider.nineMobile:
+        return '9mobile';
+    }
+  }
+
+  String get code {
+    switch (this) {
+      case NetworkProvider.mtn:
+        return 'MTN';
+      case NetworkProvider.glo:
+        return 'GLO';
+      case NetworkProvider.airtel:
+        return 'AIRTEL';
+      case NetworkProvider.nineMobile:
+        return '9MOBILE';
+    }
+  }
+
+  static NetworkProvider fromCode(String code) {
+    switch (code.toUpperCase()) {
+      case 'MTN':
+        return NetworkProvider.mtn;
+      case 'GLO':
+        return NetworkProvider.glo;
+      case 'AIRTEL':
+        return NetworkProvider.airtel;
+      case '9MOBILE':
+      case 'NINEMOBILE':
+        return NetworkProvider.nineMobile;
+      default:
+        return NetworkProvider.mtn;
+    }
+  }
+
+  /// Detect network from Nigerian phone number prefix
+  static NetworkProvider? detectFromPhone(String phone) {
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 4) return null;
+    final prefix = digits.substring(0, 4);
+
+    const mtnPrefixes = [
+      '0803', '0806', '0813', '0816', '0810', '0814', '0903', '0906', '0913', '0916'
+    ];
+    const gloPrefixes = ['0805', '0807', '0815', '0811', '0905', '0915'];
+    const airtelPrefixes = [
+      '0802', '0808', '0812', '0701', '0902', '0901', '0904', '0907', '0912'
+    ];
+    const nineMobilePrefixes = ['0809', '0817', '0818', '0908', '0909'];
+
+    if (mtnPrefixes.contains(prefix)) return NetworkProvider.mtn;
+    if (gloPrefixes.contains(prefix)) return NetworkProvider.glo;
+    if (airtelPrefixes.contains(prefix)) return NetworkProvider.airtel;
+    if (nineMobilePrefixes.contains(prefix)) return NetworkProvider.nineMobile;
+    return null;
+  }
+}
+
+enum DataPlanCategory { sme, gifting, corporate, awoof, direct }
+
+class DataPlanEntity extends Equatable {
+  const DataPlanEntity({
+    required this.id,
+    required this.network,
+    required this.size,
+    required this.validity,
+    required this.price,
+    required this.category,
+    this.originalPrice,
+    this.description,
+  });
+
+  final String id;
+  final NetworkProvider network;
+  final String size; // "1GB", "2.5GB"
+  final String validity; // "30 days"
+  final double price;
+  final DataPlanCategory category;
+  final double? originalPrice; // for showing discount strike-through
+  final String? description;
+
+  bool get hasDiscount => originalPrice != null && originalPrice! > price;
+
+  double get discountPercent {
+    if (!hasDiscount) return 0;
+    return ((originalPrice! - price) / originalPrice!) * 100;
+  }
+
+  factory DataPlanEntity.fromJson(Map<String, dynamic> json, NetworkProvider network) {
+    return DataPlanEntity(
+      id: json['id']?.toString() ?? json['plan_id']?.toString() ?? '',
+      network: network,
+      size: json['size']?.toString() ?? json['data_size']?.toString() ?? '',
+      validity: json['validity']?.toString() ?? '30 days',
+      price: _toDouble(json['price'] ?? json['amount']),
+      category: _parseCategory(json['category']?.toString()),
+      originalPrice: json['original_price'] != null
+          ? _toDouble(json['original_price'])
+          : null,
+      description: json['description']?.toString(),
+    );
+  }
+
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is double) return v;
+    if (v is int) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? 0.0;
+    return 0.0;
+  }
+
+  static DataPlanCategory _parseCategory(String? cat) {
+    switch (cat?.toLowerCase()) {
+      case 'gifting':
+        return DataPlanCategory.gifting;
+      case 'corporate':
+        return DataPlanCategory.corporate;
+      case 'awoof':
+        return DataPlanCategory.awoof;
+      case 'direct':
+        return DataPlanCategory.direct;
+      default:
+        return DataPlanCategory.sme;
+    }
+  }
+
+  @override
+  List<Object?> get props =>
+      [id, network, size, validity, price, category, originalPrice];
+}

@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Supabase (and other poolers like PgBouncer) need a separate direct connection
+  // for schema migrations — the pooled URL above doesn't support the session-level
+  // features `prisma migrate` relies on.
+  directUrl = env("DIRECT_URL")
+}
+
+enum KycStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REVERSED
+}
+
+enum TransactionType {
+  WALLET_FUNDING
+  WALLET_TRANSFER
+  DATA_PURCHASE
+  AIRTIME_PURCHASE
+  ELECTRICITY_PURCHASE
+  CABLE_PURCHASE
+  RESULT_PIN
+  SMS
+  WITHDRAWAL
+  REFERRAL_COMMISSION
+  MANUAL_ADJUSTMENT
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  FINANCE
+  SUPPORT
+}
+
+model User {
+  id                   String        @id
+  fullName             String
+  email                String        @unique
+  phone                String        @unique
+  passwordHash         String?
+  photoUrl             String?
+  walletBalanceKobo    BigInt        @default(0)
+  referralCode         String        @unique
+  referredByCode       String?
+  referralEarningsKobo BigInt        @default(0)
+  kycStatus            KycStatus     @default(UNVERIFIED)
+  emailVerified        Boolean       @default(false)
+  phoneVerified        Boolean       @default(false)
+  pinHash              String?
+  pinFailures          Int           @default(0)
+  pinLockedUntil       DateTime?
+  virtualAccountNumber String?
+  virtualAccountBank   String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  transactions         Transaction[]
+}
+
+model Transaction {
+  id                String            @id
+  userId            String
+  type              TransactionType
+  status            TransactionStatus @default(PENDING)
+  amountKobo        BigInt
+  balanceBeforeKobo BigInt
+  balanceAfterKobo  BigInt
+  provider          String?
+  providerRef       String?
+  reference         String            @unique
+  idempotencyKey    String?
+  description       String
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  user              User              @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@unique([userId, idempotencyKey])
+}
+
+model AdminUser {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  passwordHash String
+  fullName     String
+  role         AdminRole       @default(SUPPORT)
+  isActive     Boolean         @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  auditLogs    AdminAuditLog[]
+}
+
+model AdminAuditLog {
+  id         String    @id @default(uuid())
+  adminId    String
+  admin      AdminUser @relation(fields: [adminId], references: [id])
+  action     String
+  targetType String
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([targetType, targetId])
+}

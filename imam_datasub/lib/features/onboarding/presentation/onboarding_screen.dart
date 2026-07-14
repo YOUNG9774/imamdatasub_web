@@ -1,0 +1,198 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_strings.dart';
+import '../../../core/di/injection.dart';
+import '../../../core/router/route_names.dart';
+import '../../../shared/widgets/kd_button.dart';
+
+class _OnboardData {
+  const _OnboardData({
+    required this.title,
+    required this.body,
+    required this.icon,
+    required this.gradient,
+  });
+
+  final String title;
+  final String body;
+  final IconData icon;
+  final LinearGradient gradient;
+}
+
+const _pages = [
+  _OnboardData(
+    title: AppStrings.onboarding1Title,
+    body: AppStrings.onboarding1Body,
+    icon: Icons.wifi_rounded,
+    gradient: AppColors.primaryGradient,
+  ),
+  _OnboardData(
+    title: AppStrings.onboarding2Title,
+    body: AppStrings.onboarding2Body,
+    icon: Icons.receipt_long_rounded,
+    gradient: LinearGradient(
+      colors: [AppColors.secondary500, AppColors.accent500],
+    ),
+  ),
+  _OnboardData(
+    title: AppStrings.onboarding3Title,
+    body: AppStrings.onboarding3Body,
+    icon: Icons.card_giftcard_rounded,
+    gradient: LinearGradient(
+      colors: [AppColors.accent500, AppColors.primary600],
+    ),
+  ),
+];
+
+class OnboardingScreen extends ConsumerStatefulWidget {
+  const OnboardingScreen({super.key});
+
+  @override
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
+  final _controller = PageController();
+  int _currentPage = 0;
+
+  Future<void> _completeOnboarding() async {
+    final storage = ref.read(secureStorageProvider);
+    await storage.setOnboardingComplete();
+    if (mounted) context.go(RouteNames.login);
+  }
+
+  void _next() {
+    if (_currentPage < _pages.length - 1) {
+      _controller.nextPage(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _completeOnboarding();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: TextButton(
+                  onPressed: _completeOnboarding,
+                  child: Text(
+                    AppStrings.skip,
+                    style: TextStyle(
+                      color: AppColors.neutral500,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: _pages.length,
+                onPageChanged: (i) => setState(() => _currentPage = i),
+                itemBuilder: (context, index) => _OnboardPage(data: _pages[index]),
+              ),
+            ),
+            SmoothPageIndicator(
+              controller: _controller,
+              count: _pages.length,
+              effect: ExpandingDotsEffect(
+                activeDotColor: Theme.of(context).colorScheme.primary,
+                dotColor: AppColors.neutral200,
+                dotHeight: 8,
+                dotWidth: 8,
+                expansionFactor: 3,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: KDButton(
+                label: _currentPage == _pages.length - 1
+                    ? 'Get started'
+                    : AppStrings.next,
+                onPressed: _next,
+                gradient: _pages[_currentPage].gradient,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OnboardPage extends StatelessWidget {
+  const _OnboardPage({required this.data});
+  final _OnboardData data;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 220,
+            height: 220,
+            decoration: BoxDecoration(
+              gradient: data.gradient,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: data.gradient.colors.first.withValues(alpha: 0.3),
+                  blurRadius: 40,
+                  offset: const Offset(0, 16),
+                ),
+              ],
+            ),
+            child: Icon(data.icon, size: 88, color: Colors.white),
+          )
+              .animate()
+              .fadeIn(duration: 400.ms)
+              .scale(begin: const Offset(0.8, 0.8), curve: Curves.easeOutBack),
+
+          const SizedBox(height: 48),
+
+          Text(
+            data.title,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2),
+
+          const SizedBox(height: 12),
+
+          Text(
+            data.body,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.neutral500,
+                  height: 1.5,
+                ),
+          ).animate().fadeIn(delay: 250.ms),
+        ],
+      ),
+    );
+  }
+}

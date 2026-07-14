@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">IMAM DATASUB</string>
+    <string name="notification_channel_name">IMAM DATASUB</string>
+    <string name="notification_channel_description">Transaction alerts and app notifications</string>
+</resources>
