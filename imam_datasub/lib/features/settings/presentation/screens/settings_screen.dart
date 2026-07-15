@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -15,22 +14,20 @@ import '../../../../shared/widgets/kd_button.dart';
 import '../../../../shared/widgets/kd_card.dart';
 import '../../../../shared/widgets/kd_pin_input.dart';
 import '../../../../shared/widgets/kd_text_field.dart';
-import '../../../auth/data/datasources/auth_local_datasource.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../notifications/presentation/providers/notification_provider.dart';
 import '../../../../app.dart';
 
 // ── Change password screen ─────────────────────────────────
-class _ChangePasswordScreen extends ConsumerStatefulWidget {
-  const _ChangePasswordScreen();
+class ChangePasswordScreen extends ConsumerStatefulWidget {
+  const ChangePasswordScreen({super.key});
 
   @override
-  ConsumerState<_ChangePasswordScreen> createState() =>
+  ConsumerState<ChangePasswordScreen> createState() =>
       _ChangePasswordScreenState();
 }
 
-class _ChangePasswordScreenState
-    extends ConsumerState<_ChangePasswordScreen> {
+class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   final _oldController = TextEditingController();
   final _newController = TextEditingController();
   final _confirmController = TextEditingController();
@@ -50,8 +47,10 @@ class _ChangePasswordScreenState
       return;
     }
     if (AppValidators.password(_newController.text) != null) {
-      context.showSnackBar(AppValidators.password(_newController.text)!,
-          isError: true);
+      context.showSnackBar(
+        AppValidators.password(_newController.text)!,
+        isError: true,
+      );
       return;
     }
 
@@ -121,16 +120,15 @@ class _ChangePasswordScreenState
 }
 
 // ── Change PIN screen ──────────────────────────────────────
-class _ChangePinScreen extends ConsumerStatefulWidget {
-  const _ChangePinScreen();
+class ChangePinScreen extends ConsumerStatefulWidget {
+  const ChangePinScreen({super.key});
 
   @override
-  ConsumerState<_ChangePinScreen> createState() => _ChangePinScreenState();
+  ConsumerState<ChangePinScreen> createState() => _ChangePinScreenState();
 }
 
-class _ChangePinScreenState extends ConsumerState<_ChangePinScreen> {
+class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
   String _newPin = '';
-  String _confirmPin = '';
   int _step = 0; // 0 = enter new, 1 = confirm
   bool _isLoading = false;
   bool _hasError = false;
@@ -193,22 +191,27 @@ class _ChangePinScreenState extends ConsumerState<_ChangePinScreen> {
                   color: AppColors.primary50,
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: Icon(Icons.pin_outlined,
-                    color: context.colors.primary, size: 30),
+                child: Icon(
+                  Icons.pin_outlined,
+                  color: context.colors.primary,
+                  size: 30,
+                ),
               ),
               const SizedBox(height: 24),
               Text(
                 _step == 0 ? AppStrings.createPin : AppStrings.confirmPin,
-                style: context.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w800),
+                style: context.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 _step == 0
                     ? 'Choose a 4-digit PIN for transactions'
                     : 'Re-enter your PIN to confirm',
-                style: context.textTheme.bodyMedium
-                    ?.copyWith(color: AppColors.neutral500),
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.neutral500,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
@@ -220,8 +223,7 @@ class _ChangePinScreenState extends ConsumerState<_ChangePinScreen> {
                   length: 4,
                   hasError: _hasError,
                   onCompleted: _handlePinCompleted,
-                  onChanged: (_) =>
-                      setState(() => _hasError = false),
+                  onChanged: (_) => setState(() => _hasError = false),
                 ),
             ],
           ),
@@ -238,7 +240,8 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
-    final isDark = themeMode == ThemeMode.dark ||
+    final isDark =
+        themeMode == ThemeMode.dark ||
         (themeMode == ThemeMode.system &&
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
 
@@ -263,8 +266,9 @@ class SettingsScreen extends ConsumerWidget {
                   title: AppStrings.darkMode,
                   value: isDark,
                   onChanged: (v) {
-                    ref.read(themeModeProvider.notifier).state =
-                        v ? ThemeMode.dark : ThemeMode.light;
+                    ref.read(themeModeProvider.notifier).state = v
+                        ? ThemeMode.dark
+                        : ThemeMode.light;
                     final hive = ref.read(hiveStorageProvider);
                     hive.saveSetting('dark_mode', v);
                   },
@@ -284,18 +288,26 @@ class SettingsScreen extends ConsumerWidget {
                       icon: Icons.notifications_outlined,
                       title: 'Push notifications',
                       value: ref.watch(pushNotificationsEnabledProvider),
-                      onChanged: (v) => ref
-                          .read(pushNotificationsEnabledProvider.notifier)
-                          .state = v,
+                      onChanged: (v) =>
+                          ref
+                                  .read(
+                                    pushNotificationsEnabledProvider.notifier,
+                                  )
+                                  .state =
+                              v,
                     ),
                     const Divider(height: 1, indent: 60),
                     _ToggleTile(
                       icon: Icons.campaign_outlined,
                       title: 'Promotions & offers',
                       value: ref.watch(promoNotificationsEnabledProvider),
-                      onChanged: (v) => ref
-                          .read(promoNotificationsEnabledProvider.notifier)
-                          .state = v,
+                      onChanged: (v) =>
+                          ref
+                                  .read(
+                                    promoNotificationsEnabledProvider.notifier,
+                                  )
+                                  .state =
+                              v,
                     ),
                   ],
                 ),
@@ -314,8 +326,8 @@ class SettingsScreen extends ConsumerWidget {
                       icon: Icons.lock_outline_rounded,
                       title: AppStrings.changePassword,
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const _ChangePasswordScreen(),
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ChangePasswordScreen(),
                         ),
                       ),
                     ),
@@ -324,8 +336,8 @@ class SettingsScreen extends ConsumerWidget {
                       icon: Icons.pin_outlined,
                       title: 'Change transaction PIN',
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const _ChangePinScreen(),
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ChangePinScreen(),
                         ),
                       ),
                     ),
@@ -393,6 +405,38 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
+class SecurityScreen extends ConsumerWidget {
+  const SecurityScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      appBar: AppBar(title: const Text(AppStrings.security)),
+      body: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(AppDimensions.screenPaddingH),
+          child: KDCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _BiometricTile(ref: ref),
+                const Divider(height: 1, indent: 60),
+                _NavigationTile(
+                  icon: Icons.pin_outlined,
+                  title: 'Transaction PIN',
+                  onTap: () => context.push('/home/profile/pin'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ── Biometric tile with live toggle ───────────────────────
 class _BiometricTile extends ConsumerStatefulWidget {
   const _BiometricTile({required this.ref});
@@ -417,10 +461,11 @@ class _BiometricTileState extends ConsumerState<_BiometricTile> {
     final biometricService = ref.read(biometricServiceProvider);
     final enabled = await local.isBiometricEnabled();
     final available = await biometricService.isAvailable();
-    if (mounted) setState(() {
-      _enabled = enabled;
-      _available = available;
-    });
+    if (mounted)
+      setState(() {
+        _enabled = enabled;
+        _available = available;
+      });
   }
 
   @override
@@ -458,8 +503,9 @@ class _SettingsHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: context.textTheme.titleSmall
-          ?.copyWith(color: AppColors.neutral500),
+      style: context.textTheme.titleSmall?.copyWith(
+        color: AppColors.neutral500,
+      ),
     );
   }
 }
@@ -528,11 +574,14 @@ class _NavigationTile extends StatelessWidget {
         child: Icon(icon, color: context.colors.primary, size: 18),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      trailing: trailing ??
-          Icon(Icons.chevron_right_rounded,
-              color: AppColors.neutral400, size: 20),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      trailing:
+          trailing ??
+          Icon(
+            Icons.chevron_right_rounded,
+            color: AppColors.neutral400,
+            size: 20,
+          ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );
   }
 }

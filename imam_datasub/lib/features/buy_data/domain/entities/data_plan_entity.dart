@@ -52,11 +52,28 @@ extension NetworkProviderX on NetworkProvider {
     final prefix = digits.substring(0, 4);
 
     const mtnPrefixes = [
-      '0803', '0806', '0813', '0816', '0810', '0814', '0903', '0906', '0913', '0916'
+      '0803',
+      '0806',
+      '0813',
+      '0816',
+      '0810',
+      '0814',
+      '0903',
+      '0906',
+      '0913',
+      '0916',
     ];
     const gloPrefixes = ['0805', '0807', '0815', '0811', '0905', '0915'];
     const airtelPrefixes = [
-      '0802', '0808', '0812', '0701', '0902', '0901', '0904', '0907', '0912'
+      '0802',
+      '0808',
+      '0812',
+      '0701',
+      '0902',
+      '0901',
+      '0904',
+      '0907',
+      '0912',
     ];
     const nineMobilePrefixes = ['0809', '0817', '0818', '0908', '0909'];
 
@@ -98,19 +115,59 @@ class DataPlanEntity extends Equatable {
     return ((originalPrice! - price) / originalPrice!) * 100;
   }
 
-  factory DataPlanEntity.fromJson(Map<String, dynamic> json, NetworkProvider network) {
+  factory DataPlanEntity.fromJson(
+    Map<String, dynamic> json,
+    NetworkProvider network,
+  ) {
+    final rawName =
+        json['name']?.toString() ??
+        json['plan_name']?.toString() ??
+        json['size']?.toString() ??
+        json['data_size']?.toString() ??
+        '';
+    final parsed = _parsePlanName(rawName);
+    final rawValidity = json['validity']?.toString() ?? '';
+
     return DataPlanEntity(
       id: json['id']?.toString() ?? json['plan_id']?.toString() ?? '',
       network: network,
-      size: json['size']?.toString() ?? json['data_size']?.toString() ?? '',
-      validity: json['validity']?.toString() ?? '30 days',
-      price: _toDouble(json['price'] ?? json['amount']),
-      category: _parseCategory(json['category']?.toString()),
+      size: parsed.size,
+      validity: _cleanValidity(rawValidity.isEmpty ? '30 days' : rawValidity),
+      price: _toDouble(json['price'] ?? json['amount'] ?? json['plan_amount']),
+      category: _parseCategory(json['category']?.toString() ?? parsed.category),
       originalPrice: json['original_price'] != null
           ? _toDouble(json['original_price'])
           : null,
-      description: json['description']?.toString(),
+      description: json['description']?.toString() ?? parsed.category,
     );
+  }
+
+  static ({String size, String category}) _parsePlanName(String name) {
+    final parts = name.split(' - ');
+    final category = parts.length > 1 ? parts.first.trim() : '';
+    final rawSize = parts.length > 1 ? parts.sublist(1).join(' - ') : name;
+    return (size: _normalizeSize(rawSize.trim()), category: category);
+  }
+
+  static String _normalizeSize(String value) {
+    final match = RegExp(
+      r'(\d+(?:\.\d+)?)\s*(GB|MB)',
+      caseSensitive: false,
+    ).firstMatch(value);
+    if (match == null) return value;
+    final number = double.tryParse(match.group(1) ?? '') ?? 0;
+    final unit = (match.group(2) ?? '').toUpperCase();
+    final cleanNumber = number == number.roundToDouble()
+        ? number.toInt().toString()
+        : number.toString();
+    return '$cleanNumber$unit';
+  }
+
+  static String _cleanValidity(String value) {
+    return value
+        .replaceAll(RegExp(r'\{.*?\}'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 
   static double _toDouble(dynamic v) {
@@ -126,10 +183,13 @@ class DataPlanEntity extends Equatable {
       case 'gifting':
         return DataPlanCategory.gifting;
       case 'corporate':
+      case 'corporate gifting':
         return DataPlanCategory.corporate;
       case 'awoof':
         return DataPlanCategory.awoof;
       case 'direct':
+      case 'data share':
+      case 'data coupons':
         return DataPlanCategory.direct;
       default:
         return DataPlanCategory.sme;
@@ -137,6 +197,13 @@ class DataPlanEntity extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, network, size, validity, price, category, originalPrice];
+  List<Object?> get props => [
+    id,
+    network,
+    size,
+    validity,
+    price,
+    category,
+    originalPrice,
+  ];
 }

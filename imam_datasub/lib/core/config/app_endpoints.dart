@@ -120,4 +120,15 @@ class AppEndpoints {
   static String get appSettings => '$_base/app/settings';
   static String get banners => '$_base/app/banners';
   static String get announcements => '$_base/app/announcements';
+
+  // Admin
+  static String get adminMe => '$_base/admin/me';
+  static String adminDataPrices({String? network}) => network == null
+      ? '$_base/admin/data-prices'
+      : '$_base/admin/data-prices?network=$network';
+  static String adminDataPrice(String id) => '$_base/admin/data-prices/$id';
+  static String adminSyncDataPrices(String network) =>
+      '$_base/admin/data-prices/sync/$network';
+  static String get adminApplyDataMarkup =>
+      '$_base/admin/data-prices/apply-markup';
 }

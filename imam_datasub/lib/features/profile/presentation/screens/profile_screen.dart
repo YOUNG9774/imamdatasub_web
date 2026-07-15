@@ -8,6 +8,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../shared/widgets/kd_card.dart';
+import '../../../admin/presentation/providers/admin_pricing_provider.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
@@ -17,6 +18,7 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final admin = ref.watch(adminMeProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.profile)),
@@ -24,7 +26,8 @@ class ProfileScreen extends ConsumerWidget {
         top: false,
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(
-              horizontal: AppDimensions.screenPaddingH),
+            horizontal: AppDimensions.screenPaddingH,
+          ),
           child: Column(
             children: [
               const SizedBox(height: 20),
@@ -62,10 +65,15 @@ class ProfileScreen extends ConsumerWidget {
                             color: context.colors.primary,
                             shape: BoxShape.circle,
                             border: Border.all(
-                                color: context.colors.surface, width: 2),
+                              color: context.colors.surface,
+                              width: 2,
+                            ),
                           ),
-                          child: const Icon(Icons.edit_rounded,
-                              color: Colors.white, size: 16),
+                          child: const Icon(
+                            Icons.edit_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                         ),
                       ),
                     ),
@@ -76,14 +84,16 @@ class ProfileScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               Text(
                 user?.fullName ?? '',
-                style: context.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w800),
+                style: context.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 user?.email ?? '',
-                style: context.textTheme.bodyMedium
-                    ?.copyWith(color: AppColors.neutral500),
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.neutral500,
+                ),
               ),
               const SizedBox(height: 8),
               _KycBadge(status: user?.kycStatus ?? KycStatus.unverified),
@@ -155,6 +165,28 @@ class ProfileScreen extends ConsumerWidget {
               const SizedBox(height: 20),
 
               // ── Support & More ───────────────────────────
+              if (admin != null) ...[
+                _SectionHeader(title: 'Admin'),
+                const SizedBox(height: 8),
+                KDCard(
+                  padding: EdgeInsets.zero,
+                  child: _ProfileTile(
+                    icon: Icons.price_change_outlined,
+                    title: 'Data pricing',
+                    trailing: Text(
+                      admin.role,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.neutral500,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    onTap: () => context.push(RouteNames.adminDataPricing),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+
               _SectionHeader(title: 'Support'),
               const SizedBox(height: 8),
               KDCard(
@@ -216,8 +248,10 @@ class ProfileScreen extends ConsumerWidget {
               await ref.read(authNotifierProvider.notifier).logout();
               if (context.mounted) context.go(RouteNames.login);
             },
-            child: const Text('Sign out',
-                style: TextStyle(color: AppColors.error500)),
+            child: const Text(
+              'Sign out',
+              style: TextStyle(color: AppColors.error500),
+            ),
           ),
         ],
       ),
@@ -235,8 +269,9 @@ class _SectionHeader extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Text(
         title,
-        style: context.textTheme.titleSmall
-            ?.copyWith(color: AppColors.neutral500),
+        style: context.textTheme.titleSmall?.copyWith(
+          color: AppColors.neutral500,
+        ),
       ),
     );
   }
@@ -271,20 +306,20 @@ class _ProfileTile extends StatelessWidget {
           color: (iconColor ?? context.colors.primary).withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon,
-            color: iconColor ?? context.colors.primary, size: 18),
+        child: Icon(icon, color: iconColor ?? context.colors.primary, size: 18),
       ),
       title: Text(
         title,
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: titleColor,
-        ),
+        style: TextStyle(fontWeight: FontWeight.w600, color: titleColor),
       ),
-      trailing: trailing ??
+      trailing:
+          trailing ??
           (showChevron
-              ? Icon(Icons.chevron_right_rounded,
-                  color: AppColors.neutral400, size: 20)
+              ? Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.neutral400,
+                  size: 20,
+                )
               : null),
     );
   }
@@ -298,10 +333,22 @@ class _KycBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color, bg) = switch (status) {
-      KycStatus.verified => ('Verified', AppColors.success700, AppColors.success50),
-      KycStatus.pending => ('Pending', AppColors.warning700, AppColors.warning50),
+      KycStatus.verified => (
+        'Verified',
+        AppColors.success700,
+        AppColors.success50,
+      ),
+      KycStatus.pending => (
+        'Pending',
+        AppColors.warning700,
+        AppColors.warning50,
+      ),
       KycStatus.rejected => ('Rejected', AppColors.error700, AppColors.error50),
-      KycStatus.unverified => ('Unverified', AppColors.neutral600, AppColors.neutral100),
+      KycStatus.unverified => (
+        'Unverified',
+        AppColors.neutral600,
+        AppColors.neutral100,
+      ),
     };
 
     final (icon) = switch (status) {
@@ -315,25 +362,39 @@ class _KycBadge extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-            color: bg, borderRadius: BorderRadius.circular(6)),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+          color: bg,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
       );
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
-          color: bg, borderRadius: BorderRadius.circular(20)),
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: color, size: 14),
           const SizedBox(width: 4),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
         ],
       ),
     );

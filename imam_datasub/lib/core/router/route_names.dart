@@ -35,10 +35,10 @@ abstract class RouteNames {
   static const dataCard = '/home/services/data-card';
 
   // ── Wallet ────────────────────────────────────────────────
-  static const wallet = '/home/wallet';
-  static const fundWallet = '/home/wallet/fund';
-  static const walletTransfer = '/home/wallet/transfer';
-  static const virtualAccount = '/home/wallet/virtual-account';
+  static const wallet = '/home/dashboard/wallet';
+  static const fundWallet = '/home/dashboard/wallet/fund';
+  static const walletTransfer = '/home/dashboard/wallet/transfer';
+  static const virtualAccount = '/home/dashboard/wallet/virtual-account';
 
   // ── Transaction detail ────────────────────────────────────
   static const transactionDetail = '/home/transactions/:id';
@@ -47,10 +47,10 @@ abstract class RouteNames {
   static const purchaseSuccess = '/purchase-success';
 
   // ── KYC ───────────────────────────────────────────────────
-  static const kyc = '/home/kyc';
-  static const kycBvn = '/home/kyc/bvn';
-  static const kycNin = '/home/kyc/nin';
-  static const kycDocument = '/home/kyc/document';
+  static const kyc = '/home/profile/kyc';
+  static const kycBvn = '/home/profile/kyc/bvn';
+  static const kycNin = '/home/profile/kyc/nin';
+  static const kycDocument = '/home/profile/kyc/document';
 
   // ── Profile sub-routes ────────────────────────────────────
   static const editProfile = '/home/profile/edit';
@@ -59,18 +59,21 @@ abstract class RouteNames {
   static const security = '/home/profile/security';
 
   // ── Settings ──────────────────────────────────────────────
-  static const settings = '/home/settings';
+  static const settings = '/home/profile/settings';
+
+  // Admin
+  static const adminDataPricing = '/home/profile/admin/data-pricing';
 
   // ── Notifications ─────────────────────────────────────────
-  static const notifications = '/home/notifications';
+  static const notifications = '/home/dashboard/notifications';
 
   // ── Support ───────────────────────────────────────────────
-  static const support = '/home/support';
-  static const liveChat = '/home/support/chat';
-  static const tickets = '/home/support/tickets';
-  static const newTicket = '/home/support/tickets/new';
-  static const ticketDetail = '/home/support/tickets/:id';
-  static const faq = '/home/support/faq';
+  static const support = '/home/profile/support';
+  static const liveChat = '/home/profile/support/chat';
+  static const tickets = '/home/profile/support/tickets';
+  static const newTicket = '/home/profile/support/tickets/new';
+  static const ticketDetail = '/home/profile/support/tickets/:id';
+  static const faq = '/home/profile/support/faq';
 
   // ── Legal ─────────────────────────────────────────────────
   static const privacyPolicy = '/privacy-policy';

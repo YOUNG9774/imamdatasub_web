@@ -50,7 +50,6 @@ model User {
   fullName             String
   email                String        @unique
   phone                String        @unique
-  passwordHash         String?
   photoUrl             String?
   walletBalanceKobo    BigInt        @default(0)
   referralCode         String        @unique
@@ -89,6 +88,27 @@ model Transaction {
 
   @@index([userId, createdAt])
   @@unique([userId, idempotencyKey])
+}
+
+model DataPlanPricing {
+  id               String   @id @default(uuid())
+  provider         String   @default("alrahuz")
+  providerPlanId   String
+  network          String
+  networkId        Int
+  planType         String?
+  name             String
+  validity         String?
+  providerCostKobo BigInt
+  sellingPriceKobo BigInt?
+  isActive         Boolean  @default(true)
+  lastSeenAt       DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([provider, providerPlanId])
+  @@index([network, isActive])
+  @@index([networkId, isActive])
 }
 
 model AdminUser {

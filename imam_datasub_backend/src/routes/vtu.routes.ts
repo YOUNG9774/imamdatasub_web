@@ -103,22 +103,23 @@ vtuRoutes.post('/data/purchase', async (req, res) => {
     network: z.string(),
     plan_id: z.string(),
     phone: z.string(),
-    amount: z.number().positive()
+    amount: z.number().positive().optional()
   }).parse(req.body);
+  const plan = await providerService.getDataPlan(body.network, body.plan_id);
 
   const result = await processProviderPurchase({
     userId: req.user!.id,
-    amount: body.amount,
+    amount: plan.amount,
     type: TransactionType.DATA_PURCHASE,
-    description: `Data purchase for ${body.phone}`,
-    metadata: body,
+    description: `${plan.name} data purchase for ${body.phone}`,
+    metadata: { ...body, amount: plan.amount, plan_name: plan.name, validity: plan.validity },
     idempotencyKey: idempotencyKeyFrom(req),
     callProvider: (reference) =>
       providerService.buyData({
         network: body.network,
         planId: body.plan_id,
         phone: body.phone,
-        amount: body.amount,
+        amount: plan.amount,
         reference
       } satisfies ProviderPurchaseInput)
   });

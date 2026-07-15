@@ -38,6 +38,7 @@ import '../../features/notifications/presentation/screens/notifications_screen.d
 import '../../features/support/presentation/screens/support_screen.dart';
 import '../../features/kyc/presentation/screens/kyc_screen.dart';
 import '../../features/airtime_to_cash/presentation/screens/airtime_to_cash_screen.dart';
+import '../../features/admin/presentation/screens/admin_data_pricing_screen.dart';
 import '../di/injection.dart';
 
 // ── Auth state ────────────────────────────────────────────
@@ -76,11 +77,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.verifyOtp,
         builder: (_, state) {
-          final destination = state.uri.queryParameters['destination'] ??
+          final destination =
+              state.uri.queryParameters['destination'] ??
               state.uri.queryParameters['phone'] ??
               '';
           final mode = state.uri.queryParameters['mode'] ?? 'register';
-          final type = state.uri.queryParameters['type'] ??
+          final type =
+              state.uri.queryParameters['type'] ??
               (destination.contains('@') ? 'email' : 'phone');
           return OtpScreen(destination: destination, mode: mode, type: type);
         },
@@ -112,6 +115,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                       GoRoute(
                         path: 'fund',
                         builder: (_, __) => const FundWalletScreen(),
+                      ),
+                      GoRoute(
+                        path: 'transfer',
+                        builder: (_, __) => const WalletTransferScreen(),
                       ),
                     ],
                   ),
@@ -149,22 +156,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'electricity',
                     builder: (_, __) => const ElectricityScreen(),
                   ),
-                  GoRoute(
-                    path: 'waec',
-                    builder: (_, __) => const WaecScreen(),
-                  ),
-                  GoRoute(
-                    path: 'neco',
-                    builder: (_, __) => const NecoScreen(),
-                  ),
+                  GoRoute(path: 'waec', builder: (_, __) => const WaecScreen()),
+                  GoRoute(path: 'neco', builder: (_, __) => const NecoScreen()),
                   GoRoute(
                     path: 'nabteb',
                     builder: (_, __) => const NabtebScreen(),
                   ),
-                  GoRoute(
-                    path: 'jamb',
-                    builder: (_, __) => const JambScreen(),
-                  ),
+                  GoRoute(path: 'jamb', builder: (_, __) => const JambScreen()),
                   GoRoute(
                     path: 'bulk-sms',
                     builder: (_, __) => const BulkSmsScreen(),
@@ -226,12 +224,25 @@ final routerProvider = Provider<GoRouter>((ref) {
                     builder: (_, __) => const SettingsScreen(),
                   ),
                   GoRoute(
-                    path: 'kyc',
-                    builder: (_, __) => const KycScreen(),
+                    path: 'password',
+                    builder: (_, __) => const ChangePasswordScreen(),
                   ),
+                  GoRoute(
+                    path: 'pin',
+                    builder: (_, __) => const ChangePinScreen(),
+                  ),
+                  GoRoute(
+                    path: 'security',
+                    builder: (_, __) => const SecurityScreen(),
+                  ),
+                  GoRoute(path: 'kyc', builder: (_, __) => const KycScreen()),
                   GoRoute(
                     path: 'support',
                     builder: (_, __) => const SupportScreen(),
+                  ),
+                  GoRoute(
+                    path: 'admin/data-pricing',
+                    builder: (_, __) => const AdminDataPricingScreen(),
                   ),
                 ],
               ),
@@ -286,12 +297,10 @@ CustomTransitionPage<void> _slide(GoRouterState state, Widget child) {
     child: child,
     transitionsBuilder: (_, animation, secondaryAnimation, child) {
       return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(1.0, 0.0),
-          end: Offset.zero,
-        ).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-        ),
+        position: Tween<Offset>(begin: const Offset(1.0, 0.0), end: Offset.zero)
+            .animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ),
         child: child,
       );
     },
@@ -349,9 +358,8 @@ class PurchaseSuccessScreen extends StatelessWidget {
   final Map<String, dynamic> data;
 
   @override
-  Widget build(BuildContext context) => const Scaffold(
-        body: Center(child: Text('Purchase Success')),
-      );
+  Widget build(BuildContext context) =>
+      const Scaffold(body: Center(child: Text('Purchase Success')));
 }
 
 // AuthStatus enum is defined in auth_status.dart to prevent circular imports

@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 
 export async function logAdminAction(params: {
@@ -6,7 +6,7 @@ export async function logAdminAction(params: {
   action: string;
   targetType: string;
   targetId?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Prisma.InputJsonValue;
 }) {
   await prisma.adminAuditLog.create({
     data: {
@@ -14,7 +14,7 @@ export async function logAdminAction(params: {
       action: params.action,
       targetType: params.targetType,
       targetId: params.targetId,
-      metadata: params.metadata as Prisma.InputJsonValue | undefined
+      metadata: params.metadata
     }
   });
 }

@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { buildAdminRouter, ADMIN_ROOT_PATH } from './admin/setup.js';
 import { errorHandler } from './middleware/error.js';
+import { adminApiRoutes } from './routes/admin-api.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { transactionRoutes } from './routes/transaction.routes.js';
 import { userRoutes } from './routes/user.routes.js';
@@ -34,7 +35,8 @@ export function createApp() {
 
   app.use(express.json({ limit: '1mb' }));
 
-  app.use('/api', authRoutes);
+  app.use('/api/auth', authRoutes);
+  app.use('/api/admin', adminApiRoutes);
   app.use('/api/user', userRoutes);
   app.use('/api/wallet', walletRoutes);
   app.use('/api', vtuRoutes);

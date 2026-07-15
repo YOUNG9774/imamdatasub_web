@@ -28,7 +28,9 @@ class DataPlanCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? scheme.primary.withValues(alpha: 0.08)
-              : (isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface),
+              : (isDark
+                    ? AppColors.darkCardSurface
+                    : AppColors.lightCardSurface),
           borderRadius: BorderRadius.circular(AppDimensions.radiusLG),
           border: Border.all(
             color: isSelected
@@ -51,14 +53,18 @@ class DataPlanCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     color: isSelected
                         ? scheme.primary
-                        : (isDark ? AppColors.neutral100 : AppColors.neutral900),
+                        : (isDark
+                              ? AppColors.neutral100
+                              : AppColors.neutral900),
                   ),
                 ),
                 if (plan.hasDiscount) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.error50,
                       borderRadius: BorderRadius.circular(4),
@@ -77,11 +83,15 @@ class DataPlanCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              plan.validity,
+              plan.description == null || plan.description == plan.validity
+                  ? plan.validity
+                  : '${plan.description} - ${plan.validity}',
               style: TextStyle(
                 fontSize: 11,
                 color: isDark ? AppColors.neutral500 : AppColors.neutral500,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
             Row(
