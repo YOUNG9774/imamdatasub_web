@@ -1,6 +1,8 @@
-﻿import crypto from 'node:crypto';
+import crypto from 'node:crypto';
+import { nanoid } from 'nanoid';
 import { env } from '../config/env.js';
 import { ApiError } from '../middleware/error.js';
+import { prisma } from './prisma.js';
 
 type TokenType = 'access' | 'refresh';
 
@@ -17,10 +19,12 @@ function base64Url(input: string | Buffer) {
 }
 
 function sign(data: string) {
-  return crypto
-    .createHmac('sha256', env.AUTH_TOKEN_SECRET)
-    .update(data)
-    .digest('base64url');
+  return crypto.createHmac('sha256', env.AUTH_TOKEN_SECRET).update(data).digest('base64url');
+}
+
+/** Refresh tokens are stored hashed (never in plaintext) so a DB leak alone can't be used to log in as anyone. */
+function hashToken(token: string) {
+  return crypto.createHash('sha256').update(token).digest('hex');
 }
 
 export function createAuthToken(params: {
@@ -72,20 +76,64 @@ export function verifyAuthToken(token: string, expectedType: TokenType) {
   return decoded;
 }
 
-export function authTokensFor(user: { id: string; email: string }) {
-  return {
-    accessToken: createAuthToken({
+/**
+ * Issues a fresh access+refresh token pair and persists a hash of the refresh token,
+ * so it can be looked up and revoked later (on logout, or if it's ever suspected
+ * compromised). The access token is intentionally NOT persisted — it's short-lived
+ * and stateless by design, verified purely by signature.
+ */
+export async function issueAuthTokens(user: { id: string; email: string }) {
+  const accessToken = createAuthToken({
+    userId: user.id,
+    email: user.email,
+    type: 'access',
+    ttlSeconds: env.ACCESS_TOKEN_TTL_SECONDS
+  });
+  const refreshToken = createAuthToken({
+    userId: user.id,
+    email: user.email,
+    type: 'refresh',
+    ttlSeconds: env.REFRESH_TOKEN_TTL_SECONDS
+  });
+
+  await prisma.refreshToken.create({
+    data: {
+      id: nanoid(),
       userId: user.id,
-      email: user.email,
-      type: 'access',
-      ttlSeconds: env.ACCESS_TOKEN_TTL_SECONDS
-    }),
-    refreshToken: createAuthToken({
-      userId: user.id,
-      email: user.email,
-      type: 'refresh',
-      ttlSeconds: env.REFRESH_TOKEN_TTL_SECONDS
-    }),
-    expiresIn: env.ACCESS_TOKEN_TTL_SECONDS
-  };
+      tokenHash: hashToken(refreshToken),
+      expiresAt: new Date(Date.now() + env.REFRESH_TOKEN_TTL_SECONDS * 1000)
+    }
+  });
+
+  return { accessToken, refreshToken, expiresIn: env.ACCESS_TOKEN_TTL_SECONDS };
+}
+
+/**
+ * Verifies a refresh token's signature AND that it hasn't been revoked or already
+ * used. Rotates it: the old one is revoked and a brand new pair is issued. Rotation
+ * means a leaked refresh token is only useful once — if it's ever replayed after the
+ * legitimate client already rotated it, this will fail (the stored hash is gone).
+ */
+export async function rotateRefreshToken(oldToken: string) {
+  const payload = verifyAuthToken(oldToken, 'refresh');
+  const tokenHash = hashToken(oldToken);
+
+  const stored = await prisma.refreshToken.findUnique({ where: { tokenHash } });
+  if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
+    throw new ApiError(401, 'Refresh token is invalid or has been revoked', 'INVALID_REFRESH_TOKEN');
+  }
+
+  await prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
+
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: payload.sub } });
+  return { user, tokens: await issueAuthTokens(user) };
+}
+
+/** Called on logout — invalidates the refresh token so it can't be used again even if leaked. */
+export async function revokeRefreshToken(token: string) {
+  const tokenHash = hashToken(token);
+  await prisma.refreshToken.updateMany({
+    where: { tokenHash, revokedAt: null },
+    data: { revokedAt: new Date() }
+  });
 }

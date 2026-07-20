@@ -6,7 +6,6 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().default(8787),
   DATABASE_URL: z.string().min(1),
   FIREBASE_SERVICE_ACCOUNT_BASE64: z.string().optional(),
-  SUPABASE_JWT_SECRET: z.string().optional(),
   ALRAHUZ_BASE_URL: z.string().url().default('https://alrahuzdata.com.ng/api'),
   ALRAHUZ_API_TOKEN: z.string().optional(),
   ALRAHUZ_DATA_PLANS_PATH: z.string().default('/data/'),
@@ -33,5 +32,12 @@ export const env = EnvSchema.parse(process.env);
 if (env.NODE_ENV === 'production' && env.ADMIN_SESSION_SECRET === 'dev-only-insecure-admin-secret-change-me') {
   throw new Error(
     'ADMIN_SESSION_SECRET is still the default dev value. Set a strong random secret before running in production.'
+  );
+}
+
+if (env.NODE_ENV === 'production' && env.AUTH_TOKEN_SECRET === 'dev-only-insecure-auth-token-secret-32') {
+  throw new Error(
+    'AUTH_TOKEN_SECRET is still the default dev value. Set a strong random secret before running in production — ' +
+      'every user session token is signed with this, so a weak/default value means anyone can forge a login.'
   );
 }

@@ -1,7 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
-import { nanoid } from 'nanoid';
+import { verifyAuthToken } from '../lib/auth-token.js';
 import { prisma } from '../lib/prisma.js';
-import { metadataString, verifySupabaseAccessToken } from '../lib/supabase-auth.js';
 
 export type AuthUser = {
   id: string;
@@ -24,42 +23,16 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const token = header.startsWith('Bearer ') ? header.slice(7) : '';
     if (!token) return res.status(401).json({ status: false, message: 'Missing auth token' });
 
-    const decoded = verifySupabaseAccessToken(token);
-    const metadata = decoded.user_metadata;
-    const email =
-      decoded.email?.trim().toLowerCase() ||
-      metadataString(metadata, 'email').toLowerCase() ||
-      `${decoded.sub}@supabase.local`;
-    const phone =
-      decoded.phone?.trim() ||
-      metadataString(metadata, 'phone') ||
-      metadataString(metadata, 'phone_number') ||
-      `supabase-${decoded.sub}`;
-    const fullName =
-      metadataString(metadata, 'full_name') ||
-      metadataString(metadata, 'name') ||
-      email.split('@')[0] ||
-      'User';
+    const payload = verifyAuthToken(token, 'access');
 
-    const user = await prisma.user.upsert({
-      where: { id: decoded.sub },
-      update: {
-        email,
-        fullName,
-        phone,
-        emailVerified: Boolean(decoded.email_confirmed_at),
-        phoneVerified: Boolean(decoded.phone_confirmed_at)
-      },
-      create: {
-        id: decoded.sub,
-        email,
-        phone,
-        fullName,
-        emailVerified: Boolean(decoded.email_confirmed_at),
-        phoneVerified: Boolean(decoded.phone_confirmed_at),
-        referralCode: nanoid(8).toUpperCase()
-      }
-    });
+    // Unlike the old Firebase/Supabase flow, we do NOT auto-create a user here —
+    // accounts are created explicitly via POST /api/auth/register. If a valid
+    // token's user no longer exists (deleted account), fail closed rather than
+    // silently re-creating a blank one.
+    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user) {
+      return res.status(401).json({ status: false, message: 'Account no longer exists' });
+    }
 
     req.user = {
       id: user.id,

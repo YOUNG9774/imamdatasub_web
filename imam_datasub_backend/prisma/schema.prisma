@@ -46,26 +46,40 @@ enum AdminRole {
 }
 
 model User {
-  id                   String        @id
+  id                   String         @id
   fullName             String
-  email                String        @unique
-  phone                String        @unique
+  email                String         @unique
+  phone                String         @unique
+  passwordHash         String
   photoUrl             String?
-  walletBalanceKobo    BigInt        @default(0)
-  referralCode         String        @unique
+  walletBalanceKobo    BigInt         @default(0)
+  referralCode         String         @unique
   referredByCode       String?
-  referralEarningsKobo BigInt        @default(0)
-  kycStatus            KycStatus     @default(UNVERIFIED)
-  emailVerified        Boolean       @default(false)
-  phoneVerified        Boolean       @default(false)
+  referralEarningsKobo BigInt         @default(0)
+  kycStatus            KycStatus      @default(UNVERIFIED)
+  emailVerified        Boolean        @default(false)
+  phoneVerified        Boolean        @default(false)
   pinHash              String?
-  pinFailures          Int           @default(0)
+  pinFailures          Int            @default(0)
   pinLockedUntil       DateTime?
   virtualAccountNumber String?
   virtualAccountBank   String?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
   transactions         Transaction[]
+  refreshTokens        RefreshToken[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model Transaction {
