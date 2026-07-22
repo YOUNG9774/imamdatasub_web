@@ -24,7 +24,8 @@ const EnvSchema = z.object({
     .transform((value) => value.toLowerCase() !== 'false' && value !== '0'),
   PAYSTACK_SECRET_KEY: z.string().optional(),
   PAYSTACK_CALLBACK_URL: z.string().url().optional(),
-  ADMIN_SESSION_SECRET: z.string().min(16).default('dev-only-insecure-admin-secret-change-me')
+  ADMIN_SESSION_SECRET: z.string().min(16).default('dev-only-insecure-admin-secret-change-me'),
+  SUPABASE_JWT_SECRET: z.string().optional()
 });
 
 export const env = EnvSchema.parse(process.env);
