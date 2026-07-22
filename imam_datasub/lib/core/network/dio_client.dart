@@ -4,6 +4,7 @@ import '../storage/secure_storage.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/logging_interceptor.dart';
 import 'interceptors/retry_interceptor.dart';
+import 'token_refresh_coordinator.dart';
 
 class DioClient {
   DioClient._();
@@ -28,10 +29,12 @@ class DioClient {
       ),
     );
 
+    final refreshCoordinator = TokenRefreshCoordinator(storage);
+
     // Order matters: logging → auth → retry
     dio.interceptors.addAll([
       LoggingInterceptor(),
-      AuthInterceptor(storage, onSessionExpired),
+      AuthInterceptor(storage, refreshCoordinator, onSessionExpired),
       RetryInterceptor(dio),
     ]);
 

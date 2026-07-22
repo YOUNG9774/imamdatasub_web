@@ -8,10 +8,10 @@ class AppEndpoints {
   static String get _base => AppConfig.baseUrl;
 
   // â”€â”€ Authentication â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  static String get login => '$_base/login';
-  static String get register => '$_base/register';
-  static String get logout => '$_base/logout';
-  static String get refreshToken => '$_base/token/refresh';
+  static String get login => '$_base/auth/login';
+  static String get register => '$_base/auth/register';
+  static String get logout => '$_base/auth/logout';
+  static String get refreshToken => '$_base/auth/token/refresh';
   static String get sendOtp => '$_base/otp/send';
   static String get verifyOtp => '$_base/otp/verify';
   static String get forgotPassword => '$_base/password/forgot';

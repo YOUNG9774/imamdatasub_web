@@ -39,7 +39,6 @@ dependencies:
   # resolution failures. Verified directly on pub.dev (all Min Dart SDK
   # 3.2–3.6, well under our 3.8.1 target) as the current mutually-tested set.
   firebase_core: ^4.11.0
-  firebase_auth: ^6.5.3
   cloud_firestore: ^6.6.0
   firebase_messaging: ^16.4.0
   firebase_crashlytics: ^5.2.4

@@ -13,9 +13,6 @@
     <!-- Camera for KYC / selfie -->
     <uses-permission android:name="android.permission.CAMERA" />
 
-    <!-- Contacts for Bulk SMS -->
-    <uses-permission android:name="android.permission.READ_CONTACTS" />
-
     <!-- Notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -28,9 +25,6 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-
-    <!-- Phone state (for device binding) -->
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <!-- ── Feature declarations ──────────────────────────── -->
     <uses-feature
