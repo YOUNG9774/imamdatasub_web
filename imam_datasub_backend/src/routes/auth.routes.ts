@@ -101,6 +101,10 @@ authRoutes.post('/login', async (req, res) => {
     throw new ApiError(401, 'Invalid email/phone or password', 'INVALID_CREDENTIALS');
   }
 
+  if (!user.passwordHash) {
+    throw new ApiError(401, 'Invalid email/phone or password', 'INVALID_CREDENTIALS');
+  }
+
   const ok = await bcrypt.compare(body.password, user.passwordHash);
   if (!ok) {
     throw new ApiError(401, 'Invalid email/phone or password', 'INVALID_CREDENTIALS');

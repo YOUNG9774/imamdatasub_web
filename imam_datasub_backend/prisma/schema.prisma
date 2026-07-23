@@ -3,12 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // Supabase (and other poolers like PgBouncer) need a separate direct connection
-  // for schema migrations — the pooled URL above doesn't support the session-level
-  // features `prisma migrate` relies on.
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum KycStatus {
@@ -50,7 +46,7 @@ model User {
   fullName             String
   email                String         @unique
   phone                String         @unique
-  passwordHash         String
+  passwordHash         String?
   photoUrl             String?
   walletBalanceKobo    BigInt         @default(0)
   referralCode         String         @unique
