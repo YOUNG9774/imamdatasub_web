@@ -1,6 +1,6 @@
 [phases.install]
 cmds = [
-  "NPM_CONFIG_PRODUCTION=false npm install --no-audit --no-fund"
+  "NPM_CONFIG_PRODUCTION=false npm ci --cache /tmp/.npm --no-audit --no-fund"
 ]
 
 [phases.build]
