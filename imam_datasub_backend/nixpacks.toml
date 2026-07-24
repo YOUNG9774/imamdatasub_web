@@ -1,0 +1,8 @@
+[phases.install]
+cmds = [
+  "find node_modules/.cache -mindepth 1 -delete 2>/dev/null || true",
+  "NPM_CONFIG_PRODUCTION=false npm ci --no-audit --no-fund"
+]
+
+[phases.build]
+cmds = ["npm run prisma:generate", "npm run build"]
