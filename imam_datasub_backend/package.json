@@ -33,6 +33,7 @@
     "helmet": "^8.0.0",
     "nanoid": "^5.0.9",
     "tslib": "^2.8.1",
+    "typescript": "^5.9.3",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -42,7 +43,15 @@
     "@types/express-session": "^1.18.0",
     "@types/node": "^22.10.2",
     "prisma": "^5.22.0",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "tsx": "^4.19.2"
+  },
+  "allowScripts": {
+    "@firebase/util@1.15.1": true,
+    "@prisma/client@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true,
+    "prisma@5.22.0": true,
+    "protobufjs@7.6.5": true
   }
 }
