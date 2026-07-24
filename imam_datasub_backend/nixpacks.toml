@@ -1,7 +1,10 @@
 [phases.install]
 cmds = [
-  "NPM_CONFIG_PRODUCTION=false npm ci --cache /tmp/.npm --no-audit --no-fund"
+  "NPM_CONFIG_PRODUCTION=false npm ci --prefix /tmp/buildnode --cache /tmp/.npm --no-audit --no-fund"
 ]
 
 [phases.build]
-cmds = ["npm run prisma:generate", "npm run build"]
+cmds = [
+  "PATH=/tmp/buildnode/node_modules/.bin:$PATH NODE_PATH=/tmp/buildnode/node_modules npm run prisma:generate",
+  "PATH=/tmp/buildnode/node_modules/.bin:$PATH NODE_PATH=/tmp/buildnode/node_modules npm run build"
+]
