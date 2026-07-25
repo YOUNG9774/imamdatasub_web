@@ -1,3 +1,16 @@
+// MUST be the first import in this file. It monkey-patches Express's Router
+// so that a rejected promise inside an `async (req, res) => {...}` handler is
+// automatically forwarded to `next(error)` -> errorHandler, instead of
+// escaping as an unhandled promise rejection at the process level.
+//
+// Without this, Express 4.x does NOT catch errors thrown/rejected inside
+// async route handlers. Combined with the `process.on('unhandledRejection', ...)`
+// handler in server.ts (which calls `process.exit(1)`), a single bad request
+// (invalid input, duplicate email, a transient DB error, etc.) was crashing
+// the ENTIRE server process - taking down every other request too - which is
+// why Railway showed "Application failed to respond" after a failed signup.
+import 'express-async-errors';
+
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
