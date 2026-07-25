@@ -2,47 +2,55 @@ import { env } from './config/env.js';
 import { createApp } from './app.js';
 import { prisma } from './lib/prisma.js';
 
+process.on('uncaughtException', (error) => {
+  console.error('[server] uncaught exception', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[server] unhandled rejection', reason);
+  process.exit(1);
+});
+
 async function startServer() {
   try {
+    console.log('[server] Creating Express app');
     const app = createApp();
 
-    const server = app.listen(env.PORT, () => {
-      console.log(`✓ Imam Datasub backend listening on http://0.0.0.0:${env.PORT}`);
+    const server = app.listen(env.PORT, '0.0.0.0', () => {
+      console.log(`Imam Datasub backend listening on port ${env.PORT}`);
     });
 
-    // Handle server errors (e.g., port already in use, bind errors)
     server.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE') {
-        console.error(`✗ Port ${env.PORT} is already in use`);
+        console.error(`[server] Port ${env.PORT} is already in use`);
       } else {
-        console.error('✗ Server error:', err);
+        console.error('[server] listen error', err);
       }
       process.exit(1);
     });
 
-    // Graceful shutdown on signals
     const shutdownSignals: NodeJS.Signals[] = ['SIGTERM', 'SIGINT'];
     shutdownSignals.forEach((signal) => {
-      process.on(signal, async () => {
-        console.log(`\nReceived ${signal}, shutting down gracefully...`);
+      process.on(signal, () => {
+        console.log(`[server] Received ${signal}, shutting down gracefully`);
         server.close(async () => {
           await prisma.$disconnect();
-          console.log('✓ Server closed, database disconnected');
+          console.log('[server] Server closed, database disconnected');
           process.exit(0);
         });
 
-        // Force exit after 10 seconds
         setTimeout(() => {
-          console.error('✗ Forced shutdown after 10s timeout');
+          console.error('[server] Forced shutdown after 10s timeout');
           process.exit(1);
         }, 10_000);
       });
     });
   } catch (error) {
-    console.error('✗ Failed to start server:', error);
+    console.error('[server] Failed to start server', error);
     await prisma.$disconnect();
     process.exit(1);
   }
 }
 
-startServer();
+void startServer();
