@@ -3,11 +3,8 @@ nixPkgs = ["nodejs_20"]
 
 [phases.install]
 cmds = [
-  "NPM_CONFIG_PRODUCTION=false npm install --prefix /tmp/buildnode --cache /tmp/.npm --no-audit --no-fund"
+  "NPM_CONFIG_PRODUCTION=false npm install --cache /tmp/.npm --no-audit --no-fund"
 ]
 
 [phases.build]
-cmds = [
-  "PATH=/tmp/buildnode/node_modules/.bin:$PATH NODE_PATH=/tmp/buildnode/node_modules npm run prisma:generate",
-  "PATH=/tmp/buildnode/node_modules/.bin:$PATH NODE_PATH=/tmp/buildnode/node_modules npm run build"
-]
+cmds = ["npm run prisma:generate", "npm run build"]
