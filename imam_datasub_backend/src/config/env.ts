@@ -4,7 +4,7 @@ import { z } from 'zod';
 const EnvSchema = z.object({
   NODE_ENV: z.string().default('development'),
   PORT: z.coerce.number().default(8787),
-  DATABASE_URL: z.string().min(1),
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   DIRECT_URL: z.string().optional(),
   FIREBASE_SERVICE_ACCOUNT_BASE64: z.string().optional(),
   ALRAHUZ_BASE_URL: z.string().url().default('https://alrahuzdata.com.ng/api'),
@@ -29,17 +29,46 @@ const EnvSchema = z.object({
   SUPABASE_JWT_SECRET: z.string().optional()
 });
 
-export const env = EnvSchema.parse(process.env);
+// Parse environment variables with enhanced error handling
+let env: z.infer<typeof EnvSchema>;
 
-if (env.NODE_ENV === 'production' && env.ADMIN_SESSION_SECRET === 'dev-only-insecure-admin-secret-change-me') {
-  throw new Error(
-    'ADMIN_SESSION_SECRET is still the default dev value. Set a strong random secret before running in production.'
-  );
+try {
+  env = EnvSchema.parse(process.env);
+} catch (error) {
+  if (error instanceof z.ZodError) {
+    console.error('✗ Environment variable validation failed:');
+    error.errors.forEach((err) => {
+      const path = err.path.join('.');
+      console.error(`  - ${path}: ${err.message}`);
+    });
+    console.error('\n✗ Please check your .env file or environment variables');
+    process.exit(1);
+  }
+  throw error;
 }
 
-if (env.NODE_ENV === 'production' && env.AUTH_TOKEN_SECRET === 'dev-only-insecure-auth-token-secret-32') {
-  throw new Error(
-    'AUTH_TOKEN_SECRET is still the default dev value. Set a strong random secret before running in production — ' +
-      'every user session token is signed with this, so a weak/default value means anyone can forge a login.'
-  );
+// Production security checks
+if (env.NODE_ENV === 'production') {
+  const securityIssues: string[] = [];
+
+  if (env.ADMIN_SESSION_SECRET === 'dev-only-insecure-admin-secret-change-me') {
+    securityIssues.push('ADMIN_SESSION_SECRET is still the default dev value');
+  }
+
+  if (env.AUTH_TOKEN_SECRET === 'dev-only-insecure-auth-token-secret-32') {
+    securityIssues.push('AUTH_TOKEN_SECRET is still the default dev value');
+  }
+
+  if (securityIssues.length > 0) {
+    console.error('✗ Production security violations detected:');
+    securityIssues.forEach((issue) => {
+      console.error(`  - ${issue}`);
+    });
+    console.error('\n✗ Set strong random secrets before running in production');
+    process.exit(1);
+  }
+
+  console.log('✓ All production security checks passed');
 }
+
+export { env };
