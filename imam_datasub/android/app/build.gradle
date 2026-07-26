@@ -38,7 +38,7 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
         // Required by flutter_local_notifications 10+ (uses java.time APIs
-        // internally for scheduled notifications) — without this, the build
+        // internally for scheduled notifications) - without this, the build
         // fails with "Dependency ':flutter_local_notifications' requires
         // core library desugaring to be enabled for :app".
         coreLibraryDesugaringEnabled true
@@ -54,7 +54,7 @@ android {
 
     defaultConfig {
         applicationId "com.imamdatasub.app"
-        minSdk 24
+        minSdkVersion flutter.minSdkVersion
         targetSdk 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
@@ -101,7 +101,7 @@ android {
     // Recent versions of the Flutter Gradle plugin automatically set
     // android.defaultConfig.ndk.abiFilters for non-debuggable builds, which
     // conflicts with (and is mutually exclusive with) a manual `splits.abi`
-    // block — Gradle throws "Conflicting configuration" if both are present.
+    // block - Gradle throws "Conflicting configuration" if both are present.
     // To get per-ABI split APKs for release, use Flutter's own flag instead:
     //   flutter build apk --split-per-abi
     // This produces app-armeabi-v7a-release.apk, app-arm64-v8a-release.apk,

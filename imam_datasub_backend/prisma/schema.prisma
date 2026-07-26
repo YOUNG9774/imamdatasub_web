@@ -68,6 +68,10 @@ model User {
   pinLockedUntil       DateTime?
   virtualAccountNumber String?
   virtualAccountBank   String?
+  paystackCustomerCode String?
+  bvnLast4             String?
+  bvnVerifiedAt        DateTime?
+  kycFailureReason     String?
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
   transactions         Transaction[]

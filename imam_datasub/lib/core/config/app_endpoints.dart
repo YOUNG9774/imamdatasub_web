@@ -96,12 +96,10 @@ class AppEndpoints {
   static String get referralHistory => '$_base/referral/history';
   static String get withdrawCommission => '$_base/referral/withdraw';
 
-  // â”€â”€ KYC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── KYC ────────────────────────────────────────────────
   static String get kycStatus => '$_base/kyc/status';
+  static String get kycBanks => '$_base/kyc/banks';
   static String get verifyBvn => '$_base/kyc/bvn';
-  static String get verifyNin => '$_base/kyc/nin';
-  static String get uploadKycDocument => '$_base/kyc/document';
-  static String get uploadSelfie => '$_base/kyc/selfie';
 
   // â”€â”€ Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static String get notifications => '$_base/notifications';
