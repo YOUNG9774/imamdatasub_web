@@ -3,8 +3,16 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Used for normal app queries at runtime - goes through Supabase's
+  // PgBouncer transaction pooler (port 6543), which scales much better
+  // under load from the running server.
+  url       = env("DATABASE_URL")
+  // Used ONLY by `prisma migrate deploy` / `prisma db push`. Migrations run
+  // DDL statements and take an advisory lock, neither of which PgBouncer's
+  // transaction-pooling mode supports - so migrations must go through a
+  // direct, non-pooled connection (Supabase port 5432) or they hang forever.
+  directUrl = env("DIRECT_URL")
 }
 
 enum KycStatus {
