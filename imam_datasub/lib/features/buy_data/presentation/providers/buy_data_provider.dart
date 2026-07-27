@@ -32,11 +32,36 @@ final buyDataRepositoryProvider = Provider<BuyDataRepository>((ref) {
 final selectedNetworkProvider =
     StateProvider.autoDispose<NetworkProvider>((ref) => NetworkProvider.mtn);
 
-// ── Data plans for selected network ────────────────────────
-final dataPlansProvider = FutureProvider.autoDispose
-    .family<List<DataPlanEntity>, NetworkProvider>((ref, network) async {
+// ── Selected Data Type (category) - resets whenever network changes ────
+final selectedCategoryProvider =
+    StateProvider.autoDispose<String?>((ref) {
+  // Re-run whenever the network changes, so switching networks clears the
+  // previously selected Data Type rather than carrying over a category that
+  // might not exist for the new network.
+  ref.watch(selectedNetworkProvider);
+  return null;
+});
+
+// ── Available Data Types (SME, GIFTING, etc.) for the selected network ──
+final dataTypesProvider = FutureProvider.autoDispose
+    .family<List<DataTypeOption>, NetworkProvider>((ref, network) async {
   final repository = ref.read(buyDataRepositoryProvider);
-  final result = await repository.getDataPlans(network);
+  final result = await repository.getDataTypes(network);
+  return result.fold(
+    (failure) => throw failure,
+    (types) => types,
+  );
+});
+
+// ── Data plans for selected network + Data Type ────────────────────────
+final dataPlansProvider = FutureProvider.autoDispose
+    .family<List<DataPlanEntity>, ({NetworkProvider network, String? category})>(
+        (ref, params) async {
+  final repository = ref.read(buyDataRepositoryProvider);
+  final result = await repository.getDataPlans(
+    params.network,
+    category: params.category,
+  );
   return result.fold(
     (failure) => throw failure,
     (plans) => plans,
@@ -94,6 +119,12 @@ class BuyDataNotifier extends StateNotifier<BuyDataState> {
 
   void selectPlan(DataPlanEntity plan) {
     state = state.copyWith(selectedPlan: plan, clearError: true);
+  }
+
+  /// Clears only the selected plan (e.g. when the Data Type changes and the
+  /// old plan no longer applies) without touching phone/beneficiary state.
+  void clearSelectedPlan() {
+    state = state.copyWith(clearPlan: true, clearError: true);
   }
 
   void setPhone(String phone) {

@@ -185,6 +185,113 @@ export async function creditWalletByReference(reference: string) {
   });
 }
 
+/**
+ * Credits a wallet for a bank transfer that arrived with NO pre-created pending
+ * transaction — i.e. the user transferred directly into their permanent Dedicated
+ * Virtual Account out-of-band, rather than going through /wallet/fund or
+ * /wallet/fund/dynamic. The webhook calls this once it's confirmed (via
+ * `verifyTransaction`) that no existing transaction matches the reference.
+ *
+ * Idempotent: `reference` is Paystack's own transaction reference, which is
+ * globally unique, and `Transaction.reference` has a unique constraint — so if
+ * Paystack redelivers the same webhook, the second insert fails with P2002 and we
+ * simply return the transaction the first delivery already created.
+ */
+export async function creditDirectDeposit(params: {
+  reference: string;
+  amountKobo: bigint;
+  customerCode: string;
+  channel: string;
+}) {
+  const user = await prisma.user.findFirst({ where: { paystackCustomerCode: params.customerCode } });
+  if (!user) {
+    throw new ApiError(404, 'No wallet matches this payment\'s customer', 'USER_NOT_FOUND_FOR_PAYMENT');
+  }
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const before = await tx.user.findUniqueOrThrow({ where: { id: user.id } });
+      const after = await tx.user.update({
+        where: { id: user.id },
+        data: { walletBalanceKobo: { increment: params.amountKobo } }
+      });
+
+      return tx.transaction.create({
+        data: {
+          id: nanoid(),
+          userId: user.id,
+          type: TransactionType.WALLET_FUNDING,
+          status: TransactionStatus.SUCCESS,
+          amountKobo: params.amountKobo,
+          balanceBeforeKobo: before.walletBalanceKobo,
+          balanceAfterKobo: after.walletBalanceKobo,
+          provider: 'paystack',
+          providerRef: params.reference,
+          reference: params.reference,
+          description: `Wallet funded via direct bank transfer (${params.channel})`,
+          metadata: { channel: params.channel, customerCode: params.customerCode }
+        }
+      });
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return prisma.transaction.findUniqueOrThrow({ where: { reference: params.reference } });
+    }
+    throw error;
+  }
+}
+
+/**
+ * Redeems a prepaid "Fund with Coupon" code and credits its value to the user's
+ * wallet. Atomic: the `updateMany` claim only succeeds if the coupon is still
+ * unredeemed at write time, so two requests racing to redeem the same code can't
+ * both succeed (same guard pattern as debitWallet's balance check).
+ */
+export async function redeemCoupon(userId: string, rawCode: string) {
+  const code = rawCode.trim().toUpperCase();
+
+  return prisma.$transaction(async (tx) => {
+    const coupon = await tx.coupon.findUnique({ where: { code } });
+    if (!coupon) throw new ApiError(404, 'Invalid coupon code', 'COUPON_NOT_FOUND');
+    if (coupon.isRedeemed) throw new ApiError(409, 'This coupon has already been used', 'COUPON_ALREADY_REDEEMED');
+    if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+      throw new ApiError(410, 'This coupon has expired', 'COUPON_EXPIRED');
+    }
+
+    const claim = await tx.coupon.updateMany({
+      where: { code, isRedeemed: false },
+      data: { isRedeemed: true, redeemedByUserId: userId, redeemedAt: new Date() }
+    });
+    if (claim.count === 0) {
+      // Lost the race to another request redeeming the same code at the same time.
+      throw new ApiError(409, 'This coupon has already been used', 'COUPON_ALREADY_REDEEMED');
+    }
+
+    const before = await tx.user.findUniqueOrThrow({ where: { id: userId } });
+    const after = await tx.user.update({
+      where: { id: userId },
+      data: { walletBalanceKobo: { increment: coupon.valueKobo } }
+    });
+
+    const transaction = await tx.transaction.create({
+      data: {
+        id: nanoid(),
+        userId,
+        type: TransactionType.COUPON_REDEMPTION,
+        status: TransactionStatus.SUCCESS,
+        amountKobo: coupon.valueKobo,
+        balanceBeforeKobo: before.walletBalanceKobo,
+        balanceAfterKobo: after.walletBalanceKobo,
+        reference: `IDS-CPN-${Date.now()}-${nanoid(8).toUpperCase()}`,
+        description: `Wallet funded via coupon ${code}`,
+        metadata: { couponId: coupon.id }
+      }
+    });
+
+    return { transaction, balanceAfter: koboToNaira(after.walletBalanceKobo) };
+  });
+}
+
 /** Marks a pending funding attempt as failed (payment declined, expired, etc). Idempotent. */
 export async function markFundingFailed(reference: string) {
   return prisma.transaction.updateMany({

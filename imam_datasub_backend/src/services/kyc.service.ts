@@ -1,4 +1,5 @@
 import { KycStatus } from '@prisma/client';
+import { env } from '../config/env.js';
 import { ApiError } from '../middleware/error.js';
 import { prisma } from '../lib/prisma.js';
 import { paystackService } from './paystack.service.js';
@@ -111,6 +112,59 @@ export async function verifyBvnAndActivateWallet(params: {
       data: { kycStatus: KycStatus.REJECTED, kycFailureReason: message }
     });
     throw error;
+  }
+}
+
+/**
+ * Best-effort: creates a Dedicated Virtual Account for a brand-new user
+ * immediately at signup, WITHOUT the BVN/bank-account validation step — so the
+ * user sees a funding account the moment they log in, matching Alrahuz's UX.
+ *
+ * This works because Paystack only requires customer validation (BVN + bank
+ * account) for businesses under the Financial Services / Betting / General
+ * Services categories — everyone else can issue a DVA with just the
+ * customer's name, phone, and email. If your Paystack business IS one of
+ * those regulated categories, this call fails with an "unvalidated customer"
+ * error — expected, and handled silently below; `verifyBvnAndActivateWallet`
+ * above remains the correct (BVN-gated) path for the Static Account tier in
+ * that case. This must never throw and must never block signup.
+ */
+export async function tryProvisionInstantVirtualAccount(userId: string) {
+  if (!env.PAYSTACK_INSTANT_DVA_ENABLED || !env.PAYSTACK_SECRET_KEY) return;
+
+  try {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (user.virtualAccountNumber) return; // already has one - nothing to do
+
+    const { firstName, lastName } = splitFullName(user.fullName);
+
+    let customerCode = user.paystackCustomerCode;
+    if (!customerCode) {
+      const customer = await paystackService.createCustomer({
+        email: user.email,
+        firstName,
+        lastName,
+        phone: user.phone
+      });
+      customerCode = customer.customer_code;
+      await prisma.user.update({ where: { id: userId }, data: { paystackCustomerCode: customerCode } });
+    }
+
+    const dva = await paystackService.createDedicatedVirtualAccount({ customerCode });
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { virtualAccountNumber: dva.account_number, virtualAccountBank: dva.bank.name }
+    });
+  } catch (error) {
+    // Non-fatal by design. Logged so it's visible in Railway logs if your Paystack
+    // category actually requires validation — in which case, consider setting
+    // PAYSTACK_INSTANT_DVA_ENABLED=false so this stops trying (and failing) on
+    // every signup, and rely on the BVN-based Static Account flow instead.
+    console.warn(
+      `[kyc] Instant DVA provisioning skipped for user ${userId}:`,
+      error instanceof Error ? error.message : error
+    );
   }
 }
 

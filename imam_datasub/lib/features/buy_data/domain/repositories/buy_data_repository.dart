@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
+import '../../data/datasources/buy_data_remote_datasource.dart' show DataTypeOption;
 import '../entities/beneficiary_entity.dart';
 import '../entities/data_plan_entity.dart';
 
@@ -20,8 +21,13 @@ class DataPurchaseResult {
 abstract class BuyDataRepository {
   Future<Either<Failure, List<DataPlanEntity>>> getDataPlans(
     NetworkProvider network, {
+    String? category,
     bool forceRefresh = false,
   });
+
+  Future<Either<Failure, List<DataTypeOption>>> getDataTypes(
+    NetworkProvider network,
+  );
 
   Future<Either<Failure, DataPurchaseResult>> purchaseData({
     required NetworkProvider network,

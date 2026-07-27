@@ -93,8 +93,14 @@ async function processProviderPurchase(params: {
   };
 }
 
+vtuRoutes.get('/data/plans/:network/categories', async (req, res) => {
+  const categories = await providerService.getDataPlanCategories(req.params.network);
+  res.json({ status: true, data: categories });
+});
+
 vtuRoutes.get('/data/plans/:network', async (req, res) => {
-  const plans = await providerService.getDataPlans(req.params.network);
+  const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+  const plans = await providerService.getDataPlans(req.params.network, category);
   res.json({ status: true, data: plans });
 });
 

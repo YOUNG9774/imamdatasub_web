@@ -77,7 +77,34 @@ export class ProviderService {
     return this.getDataPlans(network);
   }
 
-  async getDataPlans(network: string) {
+  async getDataPlans(network: string, category?: string) {
+    const plans = await this.getAllDataPlans(network);
+    if (!category) return plans;
+
+    const normalized = category.trim().toUpperCase();
+    return plans.filter((plan) => (plan.planType ?? '').toUpperCase() === normalized);
+  }
+
+  /** Distinct Data Types (SME, SME2, GIFTING, etc.) that currently have at least
+   *  one plan for this network - drives the "Select Data Type" step, matching
+   *  Alrahuz's own app UX. Computed from data, not hardcoded, so it stays
+   *  correct even if a network temporarily has fewer/more categories. */
+  async getDataPlanCategories(network: string) {
+    const plans = await this.getAllDataPlans(network);
+    const counts = new Map<string, number>();
+
+    for (const plan of plans) {
+      const type = plan.planType?.trim();
+      if (!type) continue;
+      counts.set(type, (counts.get(type) ?? 0) + 1);
+    }
+
+    return Array.from(counts.entries())
+      .map(([category, planCount]) => ({ category, planCount }))
+      .sort((a, b) => a.category.localeCompare(b.category));
+  }
+
+  private async getAllDataPlans(network: string) {
     if (env.MOCK_PROVIDER) {
       return dataPlanPricingService.applyPricing([
         { id: `${network}-1gb`, name: '1GB - 30 Days', amount: 500, validity: '30 days' },
@@ -96,11 +123,19 @@ export class ProviderService {
       return cached.plans;
     }
 
-    const livePlans = await this.fetchLiveDataPlans(network, networkId).catch(() => []);
+    const livePlans = await this.fetchLiveDataPlans(network, networkId).catch((err) => {
+      console.error(`[provider] live data plan fetch failed for ${network} (networkId=${networkId}):`, err);
+      return [];
+    });
+    console.log(`[provider] ${network} (networkId=${networkId}): live=${livePlans.length} plans`);
     const rawPlans = livePlans.length > 0
       ? livePlans
       : DATA_PLANS.filter((plan) => plan.networkId === networkId);
+    if (livePlans.length === 0) {
+      console.warn(`[provider] ${network} (networkId=${networkId}): falling back to static snapshot, ${rawPlans.length} plans`);
+    }
     const plans = await dataPlanPricingService.applyPricing(rawPlans, network.toUpperCase());
+    console.log(`[provider] ${network} (networkId=${networkId}): ${plans.length} plans after pricing/isActive filter (out of ${rawPlans.length} raw)`);
 
     planCache.set(String(networkId), {
       expiresAt: Date.now() + env.ALRAHUZ_DATA_PLANS_CACHE_SECONDS * 1000,

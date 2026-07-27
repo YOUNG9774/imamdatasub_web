@@ -171,6 +171,45 @@ export const paystackService = {
     return data.data;
   },
 
+  /**
+   * "Pay with Transfer" — creates a ONE-TIME account number tied to this exact
+   * amount, matching the "Dynamic Account" option in the Fund Wallet menu. It
+   * expires automatically (Paystack enforces a 15min-8hr window) and can only
+   * be used once. Unlike the Dedicated Virtual Account, no reference needs to
+   * be pre-created - Paystack generates and returns one, which the caller
+   * should store as the funding attempt's reference so the webhook can match it.
+   */
+  async createTemporaryTransferAccount(params: { email: string; amountKobo: bigint; expiresInMinutes?: number }) {
+    const expiresAt = new Date(Date.now() + (params.expiresInMinutes ?? 30) * 60 * 1000).toISOString();
+
+    const response = await fetch(`${PAYSTACK_BASE_URL}/charge`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({
+        email: params.email,
+        amount: params.amountKobo.toString(),
+        bank_transfer: { account_expires_at: expiresAt }
+      })
+    });
+
+    const data = (await response.json()) as {
+      status: boolean;
+      message: string;
+      data?: {
+        reference: string;
+        status: string;
+        account_name: string;
+        account_number: string;
+        bank: { slug: string; name: string; id: number };
+        account_expires_at: string;
+      };
+    };
+    if (!response.ok || !data.status || !data.data) {
+      throw new ApiError(502, data.message ?? 'Failed to create a transfer account', 'PAYSTACK_PWT_FAILED');
+    }
+    return data.data;
+  },
+
   /** Public list of Nigerian banks + their codes, used to populate the bank picker in the app. */
   async listBanks() {
     const response = await fetch(`${PAYSTACK_BASE_URL}/bank?country=nigeria&currency=NGN`, {

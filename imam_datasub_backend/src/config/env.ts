@@ -31,6 +31,18 @@ const EnvSchema = z.object({
   // Fetch Providers endpoint (GET /dedicated_account/available_providers)
   // if this ever needs to change.
   PAYSTACK_DVA_PREFERRED_BANK: z.string().default('wema-bank'),
+  // Whether to create a Dedicated Virtual Account for every user immediately at
+  // signup, with no BVN. Paystack only requires BVN/customer validation for
+  // businesses under the Financial Services / Betting / General Services
+  // categories - if this account isn't one of those, leave this on and users get
+  // a funding account the moment they log in. If Paystack rejects the call
+  // (unvalidated customer), it fails silently and users fall back to the
+  // BVN-based Static Account flow in kyc.service.ts. Set to 'false' if you'd
+  // rather every user go through BVN verification first.
+  PAYSTACK_INSTANT_DVA_ENABLED: z
+    .string()
+    .default('true')
+    .transform((value) => value.toLowerCase() !== 'false' && value !== '0'),
   ADMIN_SESSION_SECRET: z.string().min(16).default('dev-only-insecure-admin-secret-change-me'),
   SUPABASE_JWT_SECRET: z.string().optional()
 });

@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma.js';
 import { koboToNaira } from '../lib/money.js';
 import { requireAuth } from '../middleware/auth.js';
 import { paystackService } from '../services/paystack.service.js';
-import { createPendingFunding, creditWalletByReference, verifyPin } from '../services/wallet.service.js';
+import { createPendingFunding, creditWalletByReference, redeemCoupon, verifyPin } from '../services/wallet.service.js';
 
 export const walletRoutes = Router();
 
@@ -93,6 +93,56 @@ walletRoutes.post('/fund/verify', async (req, res) => {
   }
 
   res.json({ status: false, message: `Payment ${verified.status}` });
+});
+
+/**
+ * "Dynamic Account" — a one-time account number tied to this exact amount,
+ * matching the Alrahuz "Dynamic Account" tab (temporary, dies after use/expiry).
+ * Uses Paystack's Pay with Transfer channel instead of a Dedicated Virtual Account.
+ */
+walletRoutes.post('/fund/dynamic', async (req, res) => {
+  const body = z.object({ amount: z.number().positive() }).parse(req.body);
+
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+  const amountKobo = BigInt(Math.round(body.amount * 100));
+
+  const charge = await paystackService.createTemporaryTransferAccount({
+    email: user.email,
+    amountKobo
+  });
+
+  // Record the attempt as PENDING using Paystack's own reference for this charge —
+  // the webhook (or /fund/verify) credits the wallet once the transfer lands.
+  await createPendingFunding({
+    userId: user.id,
+    amount: body.amount,
+    reference: charge.reference,
+    metadata: { payment_method: 'dynamic_transfer', account_number: charge.account_number }
+  });
+
+  res.json({
+    status: true,
+    message: 'Transfer this exact amount to the account below to fund your wallet',
+    data: {
+      amount: body.amount,
+      reference: charge.reference,
+      account_number: charge.account_number,
+      account_name: charge.account_name,
+      bank_name: charge.bank?.name,
+      expires_at: charge.account_expires_at
+    }
+  });
+});
+
+/** "Fund with Coupon" — redeems a prepaid code for its face value. */
+walletRoutes.post('/coupon/redeem', async (req, res) => {
+  const body = z.object({ code: z.string().trim().min(4) }).parse(req.body);
+  const result = await redeemCoupon(req.user!.id, body.code);
+  res.json({
+    status: true,
+    message: 'Coupon redeemed',
+    data: { balance: result.balanceAfter }
+  });
 });
 
 walletRoutes.post('/transfer', async (req, res) => {

@@ -9,6 +9,7 @@ import { transactionResource } from './resources/transaction.resource.js';
 import { adminUserResource } from './resources/admin-user.resource.js';
 import { adminAuditLogResource } from './resources/audit-log.resource.js';
 import { dataPlanPricingResource } from './resources/data-plan-pricing.resource.js';
+import { couponResource } from './resources/coupon.resource.js';
 
 AdminJS.registerAdapter({ Database, Resource });
 
@@ -22,7 +23,14 @@ export function buildAdminRouter() {
       companyName: 'Imam Datasub Admin',
       withMadeWithLove: false
     },
-    resources: [userResource, transactionResource, dataPlanPricingResource, adminUserResource, adminAuditLogResource]
+    resources: [
+      userResource,
+      transactionResource,
+      dataPlanPricingResource,
+      couponResource,
+      adminUserResource,
+      adminAuditLogResource
+    ]
   });
 
   // Live-rebuilds the frontend bundle on file changes during local development.

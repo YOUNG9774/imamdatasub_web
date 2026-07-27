@@ -17,6 +17,8 @@ import '../../../../shared/widgets/network_selector.dart';
 import '../../../../shared/widgets/pin_confirmation_sheet.dart';
 import '../../../../shared/widgets/purchase_success_view.dart';
 import '../../../wallet/presentation/providers/wallet_provider.dart';
+import '../../data/datasources/buy_data_remote_datasource.dart'
+    show DataTypeOption;
 import '../../domain/entities/beneficiary_entity.dart';
 import '../../domain/entities/data_plan_entity.dart';
 import '../providers/buy_data_provider.dart';
@@ -57,6 +59,23 @@ class _BuyDataScreenState extends ConsumerState<BuyDataScreen> {
     if (beneficiary.network != null) {
       ref.read(selectedNetworkProvider.notifier).state =
           NetworkProviderX.fromCode(beneficiary.network!);
+    }
+  }
+
+  Future<void> _showDataTypeSheet(NetworkProvider network) async {
+    final typesAsync = ref.read(dataTypesProvider(network));
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _DataTypeSheet(
+        network: network,
+        initialTypes: typesAsync.valueOrNull,
+      ),
+    );
+    if (selected != null) {
+      ref.read(selectedCategoryProvider.notifier).state = selected;
+      ref.read(buyDataNotifierProvider.notifier).clearSelectedPlan();
     }
   }
 
@@ -199,8 +218,31 @@ class _BuyDataScreenState extends ConsumerState<BuyDataScreen> {
   @override
   Widget build(BuildContext context) {
     final network = ref.watch(selectedNetworkProvider);
-    final plansAsync = ref.watch(dataPlansProvider(network));
+    final category = ref.watch(selectedCategoryProvider);
+    final plansAsync = category == null
+        ? const AsyncValue<List<DataPlanEntity>>.loading()
+        : ref.watch(
+            dataPlansProvider((network: network, category: category)));
     final buyState = ref.watch(buyDataNotifierProvider);
+
+    // Default to the first available Data Type once the list loads for this
+    // network (mirrors Alrahuz defaulting to a preselected category).
+    ref.listen(dataTypesProvider(network), (prev, next) {
+      next.whenData((types) {
+        if (types.isNotEmpty && ref.read(selectedCategoryProvider) == null) {
+          ref.read(selectedCategoryProvider.notifier).state =
+              types.first.category;
+        }
+      });
+    });
+
+    // Clear the selected plan if the network changes - a plan from the old
+    // network's catalog no longer applies.
+    ref.listen(selectedNetworkProvider, (prev, next) {
+      if (prev != null && prev != next) {
+        ref.read(buyDataNotifierProvider.notifier).clearSelectedPlan();
+      }
+    });
 
     // Sync phone field with provider on external updates (e.g. beneficiary pick)
     ref.listen(buyDataNotifierProvider, (prev, next) {
@@ -304,6 +346,57 @@ class _BuyDataScreenState extends ConsumerState<BuyDataScreen> {
 
               const SizedBox(height: 20),
 
+              // ── Data Type ──────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppDimensions.screenPaddingH),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Data Types', style: context.textTheme.titleSmall),
+                    const SizedBox(height: 10),
+                    InkWell(
+                      onTap: () => _showDataTypeSheet(network),
+                      borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: category != null
+                                ? context.colors.primary
+                                : AppColors.neutral300,
+                          ),
+                          borderRadius:
+                              BorderRadius.circular(AppDimensions.radiusMD),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              category ?? 'Select data type',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: category != null
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: category != null
+                                    ? null
+                                    : AppColors.neutral500,
+                              ),
+                            ),
+                            const Icon(Icons.keyboard_arrow_down_rounded),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
               // ── Data Plans Grid ───────────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(
@@ -321,7 +414,10 @@ class _BuyDataScreenState extends ConsumerState<BuyDataScreen> {
                   loading: () => const DataPlanShimmer(itemCount: 6),
                   error: (error, _) => KDErrorState(
                     message: 'Failed to load data plans',
-                    onRetry: () => ref.invalidate(dataPlansProvider(network)),
+                    onRetry: () => category != null
+                        ? ref.invalidate(dataPlansProvider(
+                            (network: network, category: category)))
+                        : ref.invalidate(dataTypesProvider(network)),
                   ),
                   data: (plans) {
                     if (plans.isEmpty) {
@@ -378,6 +474,102 @@ class _BuyDataScreenState extends ConsumerState<BuyDataScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Data Type picker bottom sheet (mirrors Alrahuz's own UI) ─────────
+class _DataTypeSheet extends ConsumerWidget {
+  const _DataTypeSheet({required this.network, this.initialTypes});
+
+  final NetworkProvider network;
+  final List<DataTypeOption>? initialTypes;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final typesAsync = ref.watch(dataTypesProvider(network));
+
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.7,
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.neutral300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Select Data Type',
+            textAlign: TextAlign.center,
+            style: context.textTheme.titleLarge?.copyWith(
+              color: AppColors.neutral500,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Flexible(
+            child: typesAsync.when(
+              loading: () => initialTypes != null
+                  ? _typeList(context, initialTypes!)
+                  : const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+              error: (_, __) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: KDErrorState(
+                  message: 'Could not load data types',
+                  onRetry: () => ref.invalidate(dataTypesProvider(network)),
+                ),
+              ),
+              data: (types) {
+                if (types.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: KDEmptyState(
+                      title: 'No data types available',
+                      message: 'Please check back later for this network.',
+                      icon: Icons.category_outlined,
+                    ),
+                  );
+                }
+                return _typeList(context, types);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _typeList(BuildContext context, List<DataTypeOption> types) {
+    return ListView.separated(
+      shrinkWrap: true,
+      itemCount: types.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        final type = types[index];
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(
+            type.category,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+          ),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).pop(type.category),
+        );
+      },
     );
   }
 }

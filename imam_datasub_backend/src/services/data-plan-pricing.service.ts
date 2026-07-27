@@ -9,6 +9,7 @@ export type PricedDataPlan = DataPlan & {
   profit: number;
   isActive: boolean;
   pricingId?: string;
+  planType?: string;
 };
 
 function planTypeFrom(name: string) {
@@ -69,7 +70,8 @@ export class DataPlanPricingService {
           sellingAmount,
           profit: sellingAmount - providerAmount,
           isActive: pricing.isActive,
-          pricingId: pricing.id
+          pricingId: pricing.id,
+          planType: pricing.planType ?? planTypeFrom(plan.name)
         } satisfies PricedDataPlan;
       })
     );

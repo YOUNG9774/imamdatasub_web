@@ -7,6 +7,7 @@ import { koboToNaira } from '../lib/money.js';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { ApiError } from '../middleware/error.js';
+import { tryProvisionInstantVirtualAccount } from '../services/kyc.service.js';
 
 export const authRoutes = Router();
 
@@ -82,8 +83,14 @@ authRoutes.post('/register', async (req, res) => {
     }
   });
 
-  const tokens = await issueAuthTokens({ id: user.id, email: user.email });
-  res.status(201).json(await authResponse(user, tokens));
+  // Best-effort - see tryProvisionInstantVirtualAccount for why this never
+  // throws. Re-fetch afterwards so the register response (and the dashboard
+  // the app shows immediately after) already includes the account number.
+  await tryProvisionInstantVirtualAccount(user.id);
+  const provisionedUser = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+
+  const tokens = await issueAuthTokens({ id: provisionedUser.id, email: provisionedUser.email });
+  res.status(201).json(await authResponse(provisionedUser, tokens));
 });
 
 authRoutes.post('/login', async (req, res) => {

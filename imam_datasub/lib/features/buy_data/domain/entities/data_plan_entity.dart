@@ -95,6 +95,7 @@ class DataPlanEntity extends Equatable {
     required this.validity,
     required this.price,
     required this.category,
+    this.planTypeRaw,
     this.originalPrice,
     this.description,
   });
@@ -105,6 +106,11 @@ class DataPlanEntity extends Equatable {
   final String validity; // "30 days"
   final double price;
   final DataPlanCategory category;
+  // Exact Data Type label as returned by the backend (e.g. "SME2",
+  // "CORPORATE GIFTING") - drives the Alrahuz-style Data Type picker, which
+  // needs the precise 6-way distinction rather than the collapsed
+  // [DataPlanCategory] enum below.
+  final String? planTypeRaw;
   final double? originalPrice; // for showing discount strike-through
   final String? description;
 
@@ -128,6 +134,8 @@ class DataPlanEntity extends Equatable {
     final parsed = _parsePlanName(rawName);
     final rawValidity = json['validity']?.toString() ?? '';
 
+    final rawPlanType = json['planType']?.toString();
+
     return DataPlanEntity(
       id: json['id']?.toString() ?? json['plan_id']?.toString() ?? '',
       network: network,
@@ -135,6 +143,9 @@ class DataPlanEntity extends Equatable {
       validity: _cleanValidity(rawValidity.isEmpty ? '30 days' : rawValidity),
       price: _toDouble(json['price'] ?? json['amount'] ?? json['plan_amount']),
       category: _parseCategory(json['category']?.toString() ?? parsed.category),
+      planTypeRaw: (rawPlanType != null && rawPlanType.isNotEmpty)
+          ? rawPlanType
+          : (parsed.category.isNotEmpty ? parsed.category : null),
       originalPrice: json['original_price'] != null
           ? _toDouble(json['original_price'])
           : null,

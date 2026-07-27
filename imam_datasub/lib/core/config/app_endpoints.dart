@@ -38,6 +38,8 @@ class AppEndpoints {
   // â”€â”€ Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static String get dataNetworks => '$_base/data/networks';
   static String dataPlans(String network) => '$_base/data/plans/$network';
+  static String dataPlanCategories(String network) =>
+      '$_base/data/plans/$network/categories';
   static String get purchaseData => '$_base/data/purchase';
   static String get dataHistory => '$_base/data/history';
 
