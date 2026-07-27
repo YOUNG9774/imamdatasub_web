@@ -9,6 +9,12 @@ abstract class WalletRepository {
     required double amount,
     required String paymentMethod,
   });
+  Future<Either<Failure, Map<String, dynamic>>> createDynamicFunding({
+    required double amount,
+  });
+  Future<Either<Failure, Map<String, dynamic>>> redeemCoupon({
+    required String code,
+  });
   Future<Either<Failure, Map<String, dynamic>>> verifyFunding({
     required String reference,
   });

@@ -107,3 +107,28 @@ userRoutes.post('/pin/change', async (req, res) => {
   await setPin(req.user!.id, body.new_pin);
   res.json({ status: true, message: 'PIN changed successfully' });
 });
+userRoutes.delete('/account', async (req, res) => {
+  const suffix = `deleted-${req.user!.id}-${Date.now()}`;
+
+  await prisma.$transaction([
+    prisma.refreshToken.updateMany({
+      where: { userId: req.user!.id, revokedAt: null },
+      data: { revokedAt: new Date() }
+    }),
+    prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        fullName: 'Deleted User',
+        email: `${suffix}@deleted.imamdatasub.local`,
+        phone: suffix,
+        passwordHash: null,
+        photoUrl: null,
+        pinHash: null,
+        emailVerified: false,
+        phoneVerified: false
+      }
+    })
+  ]);
+
+  res.json({ status: true, message: 'Account deleted successfully' });
+});

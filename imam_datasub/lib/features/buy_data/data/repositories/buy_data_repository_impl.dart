@@ -30,9 +30,12 @@ class BuyDataRepositoryImpl implements BuyDataRepository {
   @override
   Future<Either<Failure, List<DataPlanEntity>>> getDataPlans(
     NetworkProvider network, {
+    String? category,
     bool forceRefresh = false,
   }) async {
-    final cacheKey = 'data_plans_${network.code}';
+    final cacheKey = category == null || category.isEmpty
+        ? 'data_plans_${network.code}'
+        : 'data_plans_${network.code}_${category.toUpperCase()}';
 
     try {
       if (!forceRefresh) {
@@ -56,7 +59,8 @@ class BuyDataRepositoryImpl implements BuyDataRepository {
         return const Left(NetworkFailure());
       }
 
-      final plans = await _remote.getDataPlans(network);
+      final plans =
+          await _remote.getDataPlans(network, category: category);
       await _hive.set(
         cacheKey,
         plans
@@ -66,6 +70,7 @@ class BuyDataRepositoryImpl implements BuyDataRepository {
                   'validity': p.validity,
                   'price': p.price,
                   'category': p.category.name,
+                  'planType': p.planTypeRaw,
                   'original_price': p.originalPrice,
                   'description': p.description,
                 })
@@ -73,6 +78,23 @@ class BuyDataRepositoryImpl implements BuyDataRepository {
         ttl: AppConfig.dataPlansCache,
       );
       return Right(plans);
+    } on AppException catch (e) {
+      return Left(ErrorHandler.exceptionToFailure(e));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<DataTypeOption>>> getDataTypes(
+    NetworkProvider network,
+  ) async {
+    try {
+      if (!await _networkInfo.isConnected) {
+        return const Left(NetworkFailure());
+      }
+      final types = await _remote.getDataTypes(network);
+      return Right(types);
     } on AppException catch (e) {
       return Left(ErrorHandler.exceptionToFailure(e));
     } catch (e) {

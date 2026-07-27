@@ -4,6 +4,21 @@ import '../../../../core/config/app_endpoints.dart';
 import '../../../../core/error/error_handler.dart';
 import '../../domain/entities/data_plan_entity.dart';
 
+/// A Data Type (e.g. "SME", "GIFTING", "CORPORATE GIFTING") available for a
+/// given network, matching Alrahuz's own "Select Data Type" step.
+class DataTypeOption {
+  const DataTypeOption({required this.category, required this.planCount});
+  final String category;
+  final int planCount;
+
+  factory DataTypeOption.fromJson(Map<String, dynamic> json) {
+    return DataTypeOption(
+      category: json['category']?.toString() ?? '',
+      planCount: (json['planCount'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
 class PurchaseResult {
   const PurchaseResult({
     required this.success,
@@ -33,7 +48,12 @@ class PurchaseResult {
 }
 
 abstract class BuyDataRemoteDataSource {
-  Future<List<DataPlanEntity>> getDataPlans(NetworkProvider network);
+  Future<List<DataPlanEntity>> getDataPlans(
+    NetworkProvider network, {
+    String? category,
+  });
+
+  Future<List<DataTypeOption>> getDataTypes(NetworkProvider network);
 
   Future<PurchaseResult> purchaseData({
     required NetworkProvider network,
@@ -48,14 +68,34 @@ class BuyDataRemoteDataSourceImpl implements BuyDataRemoteDataSource {
   final Dio _dio;
 
   @override
-  Future<List<DataPlanEntity>> getDataPlans(NetworkProvider network) async {
+  Future<List<DataPlanEntity>> getDataPlans(
+    NetworkProvider network, {
+    String? category,
+  }) async {
     try {
-      final response =
-          await _dio.get(AppEndpoints.dataPlans(network.code));
+      final response = await _dio.get(
+        AppEndpoints.dataPlans(network.code),
+        queryParameters:
+            (category != null && category.isNotEmpty) ? {'category': category} : null,
+      );
       final list = (response.data['data'] ?? response.data) as List<dynamic>;
       return list
           .map((e) =>
               DataPlanEntity.fromJson(e as Map<String, dynamic>, network))
+          .toList();
+    } on DioException catch (e) {
+      throw ErrorHandler.handleException(e);
+    }
+  }
+
+  @override
+  Future<List<DataTypeOption>> getDataTypes(NetworkProvider network) async {
+    try {
+      final response =
+          await _dio.get(AppEndpoints.dataPlanCategories(network.code));
+      final list = (response.data['data'] ?? response.data) as List<dynamic>;
+      return list
+          .map((e) => DataTypeOption.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw ErrorHandler.handleException(e);

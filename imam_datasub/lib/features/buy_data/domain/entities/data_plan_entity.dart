@@ -142,7 +142,7 @@ class DataPlanEntity extends Equatable {
       size: parsed.size,
       validity: _cleanValidity(rawValidity.isEmpty ? '30 days' : rawValidity),
       price: _toDouble(json['price'] ?? json['amount'] ?? json['plan_amount']),
-      category: _parseCategory(json['category']?.toString() ?? parsed.category),
+      category: _parseCategory(rawPlanType ?? parsed.category),
       planTypeRaw: (rawPlanType != null && rawPlanType.isNotEmpty)
           ? rawPlanType
           : (parsed.category.isNotEmpty ? parsed.category : null),

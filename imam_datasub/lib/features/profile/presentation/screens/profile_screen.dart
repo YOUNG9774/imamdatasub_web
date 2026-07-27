@@ -1,10 +1,16 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/config/app_config.dart';
+import '../../../../core/config/app_endpoints.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../shared/widgets/kd_card.dart';
@@ -21,7 +27,16 @@ class ProfileScreen extends ConsumerWidget {
     final admin = ref.watch(adminMeProvider).valueOrNull;
 
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.profile)),
+      appBar: AppBar(
+        title: const Text(AppStrings.profile),
+        actions: [
+          TextButton.icon(
+            onPressed: () {},
+            icon: const Text('🇬🇧'),
+            label: const Text('En'),
+          ),
+        ],
+      ),
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
@@ -30,78 +45,10 @@ class ProfileScreen extends ConsumerWidget {
           ),
           child: Column(
             children: [
-              const SizedBox(height: 20),
-
-              // ── Avatar ────────────────────────────────────
-              Center(
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: AppDimensions.avatarXXL / 2,
-                      backgroundColor: AppColors.primary100,
-                      backgroundImage: user?.photoUrl != null
-                          ? CachedNetworkImageProvider(user!.photoUrl!)
-                          : null,
-                      child: user?.photoUrl == null
-                          ? Text(
-                              user?.initials ?? 'KD',
-                              style: const TextStyle(
-                                color: AppColors.primary700,
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            )
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: () => context.push(RouteNames.editProfile),
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: context.colors.primary,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: context.colors.surface,
-                              width: 2,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.edit_rounded,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-              Text(
-                user?.fullName ?? '',
-                style: context.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                user?.email ?? '',
-                style: context.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.neutral500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _KycBadge(status: user?.kycStatus ?? KycStatus.unverified),
-
+              const SizedBox(height: 18),
+              _ProfileHeader(user: user),
               const SizedBox(height: 24),
-
-              // ── Account section ──────────────────────────
-              _SectionHeader(title: 'Account'),
+              _SectionHeader(title: 'General Settings'),
               const SizedBox(height: 8),
               KDCard(
                 padding: EdgeInsets.zero,
@@ -109,32 +56,60 @@ class ProfileScreen extends ConsumerWidget {
                   children: [
                     _ProfileTile(
                       icon: Icons.person_outline_rounded,
-                      title: AppStrings.editProfile,
+                      title: 'Profile',
+                      subtitle: 'Your personal information',
                       onTap: () => context.push(RouteNames.editProfile),
                     ),
-                    const Divider(height: 1, indent: 60),
+                    const Divider(height: 1, indent: 72),
                     _ProfileTile(
-                      icon: Icons.verified_user_outlined,
-                      title: 'KYC verification',
+                      icon: Icons.price_change_outlined,
+                      title: 'Pricing',
+                      subtitle: admin == null
+                          ? 'View available data plans'
+                          : 'Manage data selling prices',
+                      onTap: () => context.push(
+                        admin == null
+                            ? RouteNames.buyData
+                            : RouteNames.adminDataPricing,
+                      ),
+                    ),
+                    const Divider(height: 1, indent: 72),
+                    _ProfileTile(
+                      icon: Icons.code_rounded,
+                      title: 'Code To Check Balance',
+                      subtitle: 'Codes to check data and airtime balance',
+                      onTap: () => _showBalanceCodes(context),
+                    ),
+                    const Divider(height: 1, indent: 72),
+                    _ProfileTile(
+                      icon: Icons.account_balance_wallet_outlined,
+                      title: 'Update Virtual Account As required by CBN',
+                      subtitle:
+                          'Complete KYC to create or refresh your account',
                       trailing: _KycBadge(
                         status: user?.kycStatus ?? KycStatus.unverified,
                         compact: true,
                       ),
                       onTap: () => context.push(RouteNames.kyc),
                     ),
-                    const Divider(height: 1, indent: 60),
+                    const Divider(height: 1, indent: 72),
                     _ProfileTile(
-                      icon: Icons.notifications_outlined,
-                      title: AppStrings.notifications,
-                      onTap: () => context.push(RouteNames.notifications),
+                      icon: Icons.call_outlined,
+                      title: 'Contact Us',
+                      subtitle: 'Contact our support team',
+                      onTap: () => _openWhatsApp(AppConfig.supportWhatsApp),
+                    ),
+                    const Divider(height: 1, indent: 72),
+                    _ProfileTile(
+                      icon: Icons.support_agent_rounded,
+                      title: 'Log Complaint',
+                      subtitle: 'Open support and complaint channels',
+                      onTap: () => context.push(RouteNames.support),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              // ── Security section ─────────────────────────
               _SectionHeader(title: 'Security'),
               const SizedBox(height: 8),
               KDCard(
@@ -144,73 +119,66 @@ class ProfileScreen extends ConsumerWidget {
                     _ProfileTile(
                       icon: Icons.lock_outline_rounded,
                       title: AppStrings.changePassword,
+                      subtitle: 'Update your login password',
                       onTap: () => context.push(RouteNames.changePassword),
                     ),
-                    const Divider(height: 1, indent: 60),
+                    const Divider(height: 1, indent: 72),
                     _ProfileTile(
                       icon: Icons.pin_outlined,
                       title: 'Transaction PIN',
+                      subtitle: 'Create or change payment PIN',
                       onTap: () => context.push(RouteNames.changePin),
                     ),
-                    const Divider(height: 1, indent: 60),
+                    const Divider(height: 1, indent: 72),
                     _ProfileTile(
                       icon: Icons.fingerprint_rounded,
                       title: AppStrings.biometricAuth,
+                      subtitle: 'Fingerprint or face unlock',
                       onTap: () => context.push(RouteNames.security),
+                    ),
+                    const Divider(height: 1, indent: 72),
+                    _ProfileTile(
+                      icon: Icons.notifications_outlined,
+                      title: AppStrings.notifications,
+                      subtitle: 'Transaction and app alerts',
+                      onTap: () => context.push(RouteNames.notifications),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              // ── Support & More ───────────────────────────
-              if (admin != null) ...[
-                _SectionHeader(title: 'Admin'),
-                const SizedBox(height: 8),
-                KDCard(
-                  padding: EdgeInsets.zero,
-                  child: _ProfileTile(
-                    icon: Icons.price_change_outlined,
-                    title: 'Data pricing',
-                    trailing: Text(
-                      admin.role,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.neutral500,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    onTap: () => context.push(RouteNames.adminDataPricing),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-
-              _SectionHeader(title: 'Support'),
+              _SectionHeader(title: 'Legal & Account'),
               const SizedBox(height: 8),
               KDCard(
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
                     _ProfileTile(
-                      icon: Icons.headset_mic_outlined,
-                      title: AppStrings.support,
-                      onTap: () => context.push(RouteNames.support),
+                      icon: Icons.privacy_tip_outlined,
+                      title: AppStrings.privacyPolicy,
+                      subtitle: 'How IMAM DATASUB uses and protects data',
+                      onTap: () => context.push(RouteNames.privacyPolicy),
                     ),
-                    const Divider(height: 1, indent: 60),
+                    const Divider(height: 1, indent: 72),
                     _ProfileTile(
-                      icon: Icons.settings_outlined,
-                      title: AppStrings.settings,
-                      onTap: () => context.push(RouteNames.settings),
+                      icon: Icons.description_outlined,
+                      title: AppStrings.termsOfService,
+                      subtitle: 'Service rules, wallet funding and refunds',
+                      onTap: () => context.push(RouteNames.terms),
+                    ),
+                    const Divider(height: 1, indent: 72),
+                    _ProfileTile(
+                      icon: Icons.delete_outline_rounded,
+                      iconColor: AppColors.error500,
+                      title: 'Deactivate / Delete Account',
+                      titleColor: AppColors.error500,
+                      subtitle: 'Request permanent account removal',
+                      onTap: () => _confirmDeleteAccount(context, ref),
                     ),
                   ],
                 ),
               ),
-
-              const SizedBox(height: 24),
-
-              // ── Sign out ─────────────────────────────────
+              const SizedBox(height: 20),
               KDCard(
                 padding: EdgeInsets.zero,
                 child: _ProfileTile(
@@ -218,11 +186,10 @@ class ProfileScreen extends ConsumerWidget {
                   iconColor: AppColors.error500,
                   title: AppStrings.signOut,
                   titleColor: AppColors.error500,
-                  onTap: () => _confirmSignOut(context, ref),
                   showChevron: false,
+                  onTap: () => _confirmSignOut(context, ref),
                 ),
               ),
-
               const SizedBox(height: 32),
             ],
           ),
@@ -231,8 +198,67 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _confirmSignOut(BuildContext context, WidgetRef ref) {
-    showDialog(
+  static void _showBalanceCodes(BuildContext context) {
+    const rows = [
+      ('MTN Data', '*323*4#'),
+      ('MTN Airtime', '*310#'),
+      ('Airtel Data', '*323#'),
+      ('Airtel Airtime', '*310#'),
+      ('Glo Data', '*323#'),
+      ('Glo Airtime', '*310#'),
+      ('9mobile Data', '*323#'),
+      ('9mobile Airtime', '*310#'),
+    ];
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Balance Codes',
+              style: context.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...rows.map(
+              (row) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  row.$1,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                trailing: TextButton.icon(
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: row.$2));
+                    if (context.mounted)
+                      context.showSnackBar('Copied ${row.$2}');
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  label: Text(row.$2),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Future<void> _openWhatsApp(String phone) async {
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    await launchUrl(
+      Uri.parse('https://wa.me/$digits?text=Hello%20IMAM%20DATASUB%20Support'),
+      mode: LaunchMode.externalApplication,
+    );
+  }
+
+  static void _confirmSignOut(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Sign out'),
@@ -255,6 +281,107 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  static void _confirmDeleteAccount(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This will disable your login and anonymize your personal profile. Transaction records may be retained for audit and compliance.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await ref
+                    .read(dioClientProvider)
+                    .delete<Map<String, dynamic>>(AppEndpoints.deleteAccount);
+                await ref.read(authNotifierProvider.notifier).logout();
+                if (context.mounted) {
+                  context.showSnackBar('Account deleted successfully');
+                  context.go(RouteNames.login);
+                }
+              } on DioException catch (e) {
+                if (context.mounted) {
+                  context.showSnackBar(
+                    e.response?.data['message']?.toString() ??
+                        'Could not delete account',
+                    isError: true,
+                  );
+                }
+              } catch (_) {
+                if (context.mounted)
+                  context.showSnackBar(
+                    'Could not delete account',
+                    isError: true,
+                  );
+              }
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.error500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({required this.user});
+  final UserEntity? user;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: AppDimensions.avatarXXL / 2,
+          backgroundColor: AppColors.primary100,
+          backgroundImage: user?.photoUrl != null
+              ? CachedNetworkImageProvider(user!.photoUrl!)
+              : null,
+          child: user?.photoUrl == null
+              ? Text(
+                  user?.initials ?? 'ID',
+                  style: const TextStyle(
+                    color: AppColors.primary700,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                  ),
+                )
+              : null,
+        ),
+        const SizedBox(height: 14),
+        Text(
+          user?.fullName.toUpperCase() ?? 'IMAM DATASUB',
+          textAlign: TextAlign.center,
+          style: context.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          user?.referralCode.isNotEmpty == true
+              ? user!.referralCode
+              : (user?.email ?? ''),
+          style: context.textTheme.bodyLarge?.copyWith(
+            color: AppColors.neutral500,
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _KycBadge(status: user?.kycStatus ?? KycStatus.unverified),
+      ],
     );
   }
 }
@@ -282,6 +409,7 @@ class _ProfileTile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.onTap,
+    this.subtitle,
     this.iconColor,
     this.titleColor,
     this.trailing,
@@ -289,6 +417,7 @@ class _ProfileTile extends StatelessWidget {
   });
   final IconData icon;
   final String title;
+  final String? subtitle;
   final VoidCallback onTap;
   final Color? iconColor;
   final Color? titleColor;
@@ -297,29 +426,37 @@ class _ProfileTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = iconColor ?? context.colors.primary;
     return ListTile(
       onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       leading: Container(
-        width: 36,
-        height: 36,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
-          color: (iconColor ?? context.colors.primary).withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(24),
         ),
-        child: Icon(icon, color: iconColor ?? context.colors.primary, size: 18),
+        child: Icon(icon, color: color, size: 24),
       ),
       title: Text(
         title,
-        style: TextStyle(fontWeight: FontWeight.w600, color: titleColor),
+        style: TextStyle(
+          fontWeight: FontWeight.w800,
+          fontSize: 16,
+          color: titleColor,
+        ),
       ),
+      subtitle: subtitle == null
+          ? null
+          : Text(
+              subtitle!,
+              style: const TextStyle(color: AppColors.neutral500),
+            ),
       trailing:
           trailing ??
           (showChevron
-              ? Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.neutral400,
-                  size: 20,
-                )
+              ? const Icon(Icons.chevron_right_rounded, size: 28)
               : null),
     );
   }
@@ -350,52 +487,22 @@ class _KycBadge extends StatelessWidget {
         AppColors.neutral100,
       ),
     };
-
-    final (icon) = switch (status) {
-      KycStatus.verified => Icons.verified_rounded,
-      KycStatus.pending => Icons.schedule_rounded,
-      KycStatus.rejected => Icons.cancel_rounded,
-      KycStatus.unverified => Icons.info_outline_rounded,
-    };
-
-    if (compact) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-      );
-    }
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 12,
+        vertical: compact ? 3 : 5,
+      ),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 14),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ],
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: compact ? 11 : 12,
+          fontWeight: FontWeight.w800,
+          color: color,
+        ),
       ),
     );
   }

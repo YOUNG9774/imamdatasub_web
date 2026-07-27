@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/router/route_names.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
@@ -359,19 +359,13 @@ class SettingsScreen extends ConsumerWidget {
                     _NavigationTile(
                       icon: Icons.privacy_tip_outlined,
                       title: AppStrings.privacyPolicy,
-                      onTap: () => launchUrl(
-                        Uri.parse(AppConfig.privacyPolicyUrl),
-                        mode: LaunchMode.externalApplication,
-                      ),
+                      onTap: () => context.push(RouteNames.privacyPolicy),
                     ),
                     const Divider(height: 1, indent: 60),
                     _NavigationTile(
                       icon: Icons.description_outlined,
                       title: AppStrings.termsOfService,
-                      onTap: () => launchUrl(
-                        Uri.parse(AppConfig.termsUrl),
-                        mode: LaunchMode.externalApplication,
-                      ),
+                      onTap: () => context.push(RouteNames.terms),
                     ),
                   ],
                 ),

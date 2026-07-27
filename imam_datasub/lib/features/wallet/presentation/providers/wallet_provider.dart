@@ -33,15 +33,12 @@ class WalletNotifier extends StateNotifier<AsyncValue<WalletEntity>> {
 
   Future<void> _load({bool forceRefresh = false}) async {
     final result = await _repository.getBalance(forceRefresh: forceRefresh);
-    result.fold(
-      (failure) {
-        // Keep showing stale data on error rather than wiping the UI
-        if (!state.hasValue) {
-          state = AsyncValue.error(failure, StackTrace.current);
-        }
-      },
-      (wallet) => state = AsyncValue.data(wallet),
-    );
+    result.fold((failure) {
+      // Keep showing stale data on error rather than wiping the UI
+      if (!state.hasValue) {
+        state = AsyncValue.error(failure, StackTrace.current);
+      }
+    }, (wallet) => state = AsyncValue.data(wallet));
   }
 
   void _startPolling() {
@@ -60,6 +57,20 @@ class WalletNotifier extends StateNotifier<AsyncValue<WalletEntity>> {
       amount: amount,
       paymentMethod: paymentMethod,
     );
+    result.fold((_) {}, (_) => refresh());
+    return result;
+  }
+
+  Future<Either<Failure, Map<String, dynamic>>> createDynamicFunding({
+    required double amount,
+  }) async {
+    return _repository.createDynamicFunding(amount: amount);
+  }
+
+  Future<Either<Failure, Map<String, dynamic>>> redeemCoupon({
+    required String code,
+  }) async {
+    final result = await _repository.redeemCoupon(code: code);
     result.fold((_) {}, (_) => refresh());
     return result;
   }
@@ -95,8 +106,8 @@ class WalletNotifier extends StateNotifier<AsyncValue<WalletEntity>> {
 
 final walletNotifierProvider =
     StateNotifierProvider<WalletNotifier, AsyncValue<WalletEntity>>((ref) {
-  return WalletNotifier(ref.read(walletRepositoryProvider));
-});
+      return WalletNotifier(ref.read(walletRepositoryProvider));
+    });
 
 // ── Balance visibility toggle (persisted to settings) ─────
 final balanceVisibilityProvider = StateProvider<bool>((ref) {

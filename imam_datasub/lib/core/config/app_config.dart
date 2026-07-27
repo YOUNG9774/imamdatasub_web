@@ -79,8 +79,9 @@ class AppConfig {
   static const double minCommissionWithdrawal = 500.0;
 
   // ── Support ──────────────────────────────────────────────
+  static const String adminWhatsApp = '+2347067693590';
   static const String supportWhatsApp = '+2348035679448';
-  static const String supportEmail = 'support@imamdatasub.ng';
+  static const String supportEmail = 'abdulmhassan02@gmai.com';
   static const String privacyPolicyUrl =
       'https://imamdatasub.ng/privacy-policy';
   static const String termsUrl = 'https://imamdatasub.ng/terms';

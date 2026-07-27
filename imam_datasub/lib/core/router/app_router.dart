@@ -39,6 +39,7 @@ import '../../features/support/presentation/screens/support_screen.dart';
 import '../../features/kyc/presentation/screens/kyc_screen.dart';
 import '../../features/airtime_to_cash/presentation/screens/airtime_to_cash_screen.dart';
 import '../../features/admin/presentation/screens/admin_data_pricing_screen.dart';
+import '../../features/legal/presentation/screens/legal_document_screen.dart';
 import '../di/injection.dart';
 
 // ── Auth state ────────────────────────────────────────────
@@ -251,6 +252,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
+      GoRoute(
+        path: RouteNames.privacyPolicy,
+        builder: (_, __) =>
+            const LegalDocumentScreen(type: LegalDocumentType.privacy),
+      ),
+      GoRoute(
+        path: RouteNames.terms,
+        builder: (_, __) =>
+            const LegalDocumentScreen(type: LegalDocumentType.terms),
+      ),
+
       // ── Purchase Success (modal-style, any flow) ──────────
       GoRoute(
         path: RouteNames.purchaseSuccess,
@@ -277,6 +289,8 @@ String? _guard(AsyncValue<AuthStatus> authState, GoRouterState state) {
     RouteNames.register,
     RouteNames.verifyOtp,
     RouteNames.forgotPassword,
+    RouteNames.privacyPolicy,
+    RouteNames.terms,
   ];
   if (publicRoutes.contains(location)) return null;
 

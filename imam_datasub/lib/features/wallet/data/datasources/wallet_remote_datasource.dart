@@ -10,6 +10,8 @@ abstract class WalletRemoteDataSource {
     required double amount,
     required String paymentMethod,
   });
+  Future<Map<String, dynamic>> createDynamicFunding({required double amount});
+  Future<Map<String, dynamic>> redeemCoupon({required String code});
   Future<Map<String, dynamic>> verifyFunding({required String reference});
   Future<void> transfer({
     required String recipientIdentifier,
@@ -54,24 +56,54 @@ class WalletRemoteDataSourceImpl implements WalletRemoteDataSource {
     required String paymentMethod,
   }) async {
     try {
-      final response = await _dio.post(
+      final response = await _dio.post<Map<String, dynamic>>(
         AppEndpoints.fundWallet,
         data: {'amount': amount, 'payment_method': paymentMethod},
       );
-      return response.data as Map<String, dynamic>;
+      return response.data ?? <String, dynamic>{};
     } on DioException catch (e) {
       throw ErrorHandler.handleException(e);
     }
   }
 
   @override
-  Future<Map<String, dynamic>> verifyFunding({required String reference}) async {
+  Future<Map<String, dynamic>> createDynamicFunding({
+    required double amount,
+  }) async {
     try {
-      final response = await _dio.post(
+      final response = await _dio.post<Map<String, dynamic>>(
+        AppEndpoints.fundWalletDynamic,
+        data: {'amount': amount},
+      );
+      return response.data ?? <String, dynamic>{};
+    } on DioException catch (e) {
+      throw ErrorHandler.handleException(e);
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> redeemCoupon({required String code}) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        AppEndpoints.redeemCoupon,
+        data: {'code': code},
+      );
+      return response.data ?? <String, dynamic>{};
+    } on DioException catch (e) {
+      throw ErrorHandler.handleException(e);
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> verifyFunding({
+    required String reference,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
         AppEndpoints.fundWalletVerify,
         data: {'reference': reference},
       );
-      return response.data as Map<String, dynamic>;
+      return response.data ?? <String, dynamic>{};
     } on DioException catch (e) {
       throw ErrorHandler.handleException(e);
     }
@@ -86,11 +118,7 @@ class WalletRemoteDataSourceImpl implements WalletRemoteDataSource {
     try {
       await _dio.post(
         AppEndpoints.walletTransfer,
-        data: {
-          'recipient': recipientIdentifier,
-          'amount': amount,
-          'pin': pin,
-        },
+        data: {'recipient': recipientIdentifier, 'amount': amount, 'pin': pin},
       );
     } on DioException catch (e) {
       throw ErrorHandler.handleException(e);
