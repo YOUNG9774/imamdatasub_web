@@ -155,6 +155,20 @@ model Coupon {
   @@index([isRedeemed])
 }
 
+/// Tracks the reseller's own balance AT Alrahuz (the upstream VTU provider) —
+/// a completely separate ledger from any customer's in-app wallet. Alrahuz
+/// requires this to be pre-funded before it will fulfill any purchase; if it
+/// runs dry, purchases fail regardless of the customer's own balance. Updated
+/// opportunistically from the `balance_after` field Alrahuz returns on every
+/// purchase response — this is a read-only mirror of Alrahuz's own number,
+/// not a balance this app manages.
+model ProviderBalanceStatus {
+  provider              String    @id
+  lastKnownBalance      Float
+  lastCheckedAt         DateTime  @updatedAt
+  lowBalanceAlertSentAt DateTime?
+}
+
 model AdminUser {
   id           String          @id @default(uuid())
   email        String          @unique

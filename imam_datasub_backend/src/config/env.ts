@@ -11,6 +11,11 @@ const EnvSchema = z.object({
   ALRAHUZ_API_TOKEN: z.string().optional(),
   ALRAHUZ_DATA_PLANS_PATH: z.string().default('/data/'),
   ALRAHUZ_DATA_PLANS_CACHE_SECONDS: z.coerce.number().int().positive().default(900),
+  // Alert threshold for YOUR OWN balance at Alrahuz (not any customer's wallet).
+  // Below this, customer purchases will start failing even though their in-app
+  // wallets are fine — see provider.service.ts's recordProviderBalance.
+  ALRAHUZ_LOW_BALANCE_THRESHOLD: z.coerce.number().positive().default(2000),
+  ALRAHUZ_LOW_BALANCE_ALERT_COOLDOWN_MINUTES: z.coerce.number().int().positive().default(60),
   DATA_PLAN_MARKUP_PERCENT: z.coerce.number().min(0).default(0),
   DATA_PLAN_MARKUP_NAIRA: z.coerce.number().min(0).default(0),
   AUTH_TOKEN_SECRET: z.string().min(32).default('dev-only-insecure-auth-token-secret-32'),

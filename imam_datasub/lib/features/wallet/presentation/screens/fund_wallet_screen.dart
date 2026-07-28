@@ -124,17 +124,34 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
     );
   }
 
-  void _showVirtualAccount() {
-    final wallet = ref.read(walletNotifierProvider).valueOrNull;
-    final accountNumber = wallet?.virtualAccountNumber;
+  Future<void> _showVirtualAccount() async {
+    var wallet = ref.read(walletNotifierProvider).valueOrNull;
+    var accountNumber = wallet?.virtualAccountNumber;
+
     if (accountNumber == null || accountNumber.isEmpty) {
-      context.showSnackBar(
-        'Virtual account not available yet. Complete KYC or refresh later.',
-        isError: true,
-      );
-      return;
+      // Cached wallet state doesn't have one yet — ask the backend directly.
+      // /wallet/virtual-account self-provisions on the fly if it's missing, so
+      // this succeeds for most users without needing a manual refresh.
+      final result =
+          await ref.read(walletRepositoryProvider).getVirtualAccount();
+      if (!mounted) return;
+
+      final fetched = result.fold((_) => null, (w) => w);
+      accountNumber = fetched?.virtualAccountNumber;
+
+      if (accountNumber == null || accountNumber.isEmpty) {
+        context.showSnackBar(
+          "We're setting up your account — please try again in a moment.",
+          isError: true,
+        );
+        return;
+      }
+
+      wallet = fetched;
+      ref.read(walletNotifierProvider.notifier).refresh();
     }
 
+    if (!mounted) return;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,

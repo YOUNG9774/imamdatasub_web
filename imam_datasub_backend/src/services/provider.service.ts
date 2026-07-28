@@ -1,5 +1,6 @@
 import { env } from '../config/env.js';
 import { ApiError } from '../middleware/error.js';
+import { prisma } from '../lib/prisma.js';
 import { dataPlanPricingService } from './data-plan-pricing.service.js';
 import { DATA_PLANS, type DataPlan } from './data-plans.data.js';
 
@@ -128,11 +129,26 @@ export class ProviderService {
       return [];
     });
     console.log(`[provider] ${network} (networkId=${networkId}): live=${livePlans.length} plans`);
-    const rawPlans = livePlans.length > 0
-      ? livePlans
-      : DATA_PLANS.filter((plan) => plan.networkId === networkId);
+
+    const staticPlans = DATA_PLANS.filter((plan) => plan.networkId === networkId);
+
+    // A live result that's a small fraction of what we know Alrahuz actually
+    // offers for this network (per the static snapshot) almost always means the
+    // response came back in a shape fetchLiveDataPlans/extractPlans didn't
+    // recognize - e.g. plans grouped by category - rather than Alrahuz genuinely
+    // having only one plan. Treat that as untrustworthy rather than showing an
+    // incomplete catalog. See fetchLiveDataPlans() for the raw-body log that
+    // pins down which case it actually was.
+    const liveLooksIncomplete = livePlans.length > 0 && staticPlans.length > 0 && livePlans.length < staticPlans.length / 4;
+
+    const rawPlans = livePlans.length > 0 && !liveLooksIncomplete ? livePlans : staticPlans;
     if (livePlans.length === 0) {
-      console.warn(`[provider] ${network} (networkId=${networkId}): falling back to static snapshot, ${rawPlans.length} plans`);
+      console.warn(`[provider] ${network} (networkId=${networkId}): live fetch returned nothing usable, falling back to static snapshot, ${rawPlans.length} plans`);
+    } else if (liveLooksIncomplete) {
+      console.warn(
+        `[provider] ${network} (networkId=${networkId}): live fetch only returned ${livePlans.length} plan(s), ` +
+          `expected roughly ${staticPlans.length} based on the static snapshot - likely a response-shape mismatch, falling back to static snapshot instead`
+      );
     }
     const plans = await dataPlanPricingService.applyPricing(rawPlans, network.toUpperCase());
     console.log(`[provider] ${network} (networkId=${networkId}): ${plans.length} plans after pricing/isActive filter (out of ${rawPlans.length} raw)`);
@@ -202,26 +218,103 @@ export class ProviderService {
    * is also treated as a failure. `ident` (Alrahuz's own transaction ID) is preferred as
    * providerRef when present, since it's what you'd use to query the transaction status
    * back from Alrahuz later — falls back to our own reference if it's missing.
+   *
+   * Also opportunistically records `balance_after` — this is YOUR OWN remaining
+   * balance at Alrahuz, not anything related to the customer's in-app wallet.
+   * It's the one number Alrahuz actually exposes for "am I about to run dry",
+   * so every response (success or failure) that includes it updates
+   * ProviderBalanceStatus and fires a one-time-per-cooldown low-balance alert.
    */
   private async normalize(response: Response, reference: string) {
     const body = (await response.json().catch(() => ({}))) as AlrahuzResponse;
 
+    if (body.balance_after !== undefined) {
+      await this.recordProviderBalance(body.balance_after).catch((err) =>
+        console.error('[alrahuz-balance] failed to record balance:', err)
+      );
+    }
+
     if (!response.ok) {
+      console.error(
+        `[alrahuz] purchase failed (reference=${reference}, http=${response.status}):`,
+        JSON.stringify(body)
+      );
       return {
         status: false,
         providerRef: reference,
-        message: body.detail ?? body.api_response ?? `Provider returned HTTP ${response.status}`
+        message: this.isLikelyBalanceIssue(body)
+          ? 'Service temporarily unavailable — please try again shortly'
+          : (body.detail ?? body.api_response ?? `Provider returned HTTP ${response.status}`)
       };
     }
 
     const succeeded = body.Status?.toLowerCase() === 'successful';
+    if (!succeeded) {
+      console.error(`[alrahuz] purchase not successful (reference=${reference}):`, JSON.stringify(body));
+    }
 
     return {
       status: succeeded,
       providerRef: body.ident ?? reference,
-      message: body.api_response ?? (succeeded ? 'Transaction successful' : `Provider status: ${body.Status ?? 'unknown'}`),
+      message: succeeded
+        ? (body.api_response ?? 'Transaction successful')
+        : this.isLikelyBalanceIssue(body)
+          ? 'Service temporarily unavailable — please try again shortly'
+          : (body.api_response ?? `Provider status: ${body.Status ?? 'unknown'}`),
       raw: body
     };
+  }
+
+  /**
+   * Keeps customer-facing messaging generic when the real cause is YOUR
+   * Alrahuz balance running low — telling a customer "insufficient balance"
+   * reads as their own wallet being the problem, which it isn't. The real
+   * detail is always still logged above and captured in ProviderBalanceStatus
+   * for you to see. Tighten this once you've seen a real low-balance failure
+   * body and know Alrahuz's exact wording.
+   */
+  private isLikelyBalanceIssue(body: AlrahuzResponse) {
+    const text = `${body.api_response ?? ''} ${body.detail ?? ''}`.toLowerCase();
+    return text.includes('balance') || text.includes('insufficient') || text.includes('fund');
+  }
+
+  /**
+   * Persists Alrahuz's own reported balance and fires a low-balance alert (a
+   * log line, throttled by ALRAHUZ_LOW_BALANCE_ALERT_COOLDOWN_MINUTES so it
+   * doesn't spam on every transaction once you're under the threshold).
+   * Visible in the admin panel via ProviderBalanceStatus. Never throws — a
+   * failure to record this must never break an actual purchase.
+   */
+  private async recordProviderBalance(rawBalance: unknown) {
+    const balance =
+      typeof rawBalance === 'number'
+        ? rawBalance
+        : typeof rawBalance === 'string'
+          ? Number(rawBalance)
+          : undefined;
+    if (balance === undefined || !Number.isFinite(balance)) return;
+
+    const status = await prisma.providerBalanceStatus.upsert({
+      where: { provider: 'alrahuz' },
+      create: { provider: 'alrahuz', lastKnownBalance: balance },
+      update: { lastKnownBalance: balance }
+    });
+
+    if (balance >= env.ALRAHUZ_LOW_BALANCE_THRESHOLD) return;
+
+    const cooldownMs = env.ALRAHUZ_LOW_BALANCE_ALERT_COOLDOWN_MINUTES * 60 * 1000;
+    const alreadyAlerted =
+      status.lowBalanceAlertSentAt && Date.now() - status.lowBalanceAlertSentAt.getTime() < cooldownMs;
+    if (alreadyAlerted) return;
+
+    console.error(
+      `[alrahuz-balance] LOW BALANCE ALERT: only ₦${balance} left at Alrahuz ` +
+        `(threshold ₦${env.ALRAHUZ_LOW_BALANCE_THRESHOLD}) — top up now to avoid failed customer purchases.`
+    );
+    await prisma.providerBalanceStatus.update({
+      where: { provider: 'alrahuz' },
+      data: { lowBalanceAlertSentAt: new Date() }
+    });
   }
 
   private headers() {
@@ -243,10 +336,25 @@ export class ProviderService {
     }
 
     const response = await fetch(url, { headers: this.headers() });
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.error(`[provider] ${network} plans endpoint returned HTTP ${response.status} for ${url.toString()}`);
+      return [];
+    }
 
     const body = (await response.json().catch(() => null)) as unknown;
-    return this.extractPlans(body, networkId);
+    const plans = this.extractPlans(body, networkId);
+
+    // A count this low is almost always a parsing problem, not Alrahuz's real
+    // catalog - log the raw shape so it's diagnosable from Railway logs
+    // instead of guessing. Capped to keep log lines from getting enormous.
+    if (plans.length <= 1) {
+      console.warn(
+        `[provider] ${network} (networkId=${networkId}): only extracted ${plans.length} plan(s) from ${url.toString()}. Raw response:`,
+        JSON.stringify(body).slice(0, 4000)
+      );
+    }
+
+    return plans;
   }
 
   private extractPlans(body: unknown, networkId: number): DataPlan[] {
@@ -266,6 +374,16 @@ export class ProviderService {
     for (const key of ['data', 'plans', 'results', 'plan', 'DataPlan']) {
       const value = record[key];
       if (Array.isArray(value)) return value;
+    }
+
+    // Alrahuz's own app UI groups plans by category (SME, GIFTING, SME2, DATA
+    // SHARE, ...) - the plans endpoint may return that same shape: an object
+    // whose values are each an array of plans, keyed by category name rather
+    // than one of the generic keys checked above. Flatten all array values
+    // found on the object as a fallback, so this isn't missed.
+    const nestedArrays = Object.values(record).filter((value): value is unknown[] => Array.isArray(value));
+    if (nestedArrays.length > 0) {
+      return nestedArrays.flat();
     }
 
     return undefined;

@@ -6,13 +6,22 @@ import { koboToNaira } from '../lib/money.js';
 import { requireAuth } from '../middleware/auth.js';
 import { paystackService } from '../services/paystack.service.js';
 import { createPendingFunding, creditWalletByReference, redeemCoupon, verifyPin } from '../services/wallet.service.js';
+import { tryProvisionInstantVirtualAccount } from '../services/kyc.service.js';
 
 export const walletRoutes = Router();
 
 walletRoutes.use(requireAuth);
 
 walletRoutes.get('/balance', async (req, res) => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+  let user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+
+  // Covers users created before this feature existed, and anyone whose
+  // signup-time attempt failed transiently. No-ops instantly if already provisioned.
+  if (!user.virtualAccountNumber) {
+    await tryProvisionInstantVirtualAccount(user.id);
+    user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+  }
+
   res.json({
     balance: koboToNaira(user.walletBalanceKobo),
     currency: 'NGN',
@@ -22,7 +31,13 @@ walletRoutes.get('/balance', async (req, res) => {
 });
 
 walletRoutes.get('/virtual-account', async (req, res) => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+  let user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+
+  if (!user.virtualAccountNumber) {
+    await tryProvisionInstantVirtualAccount(user.id);
+    user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+  }
+
   res.json({
     balance: koboToNaira(user.walletBalanceKobo),
     currency: 'NGN',

@@ -5,13 +5,20 @@ import { koboToNaira } from '../lib/money.js';
 import { requireAuth } from '../middleware/auth.js';
 import { ApiError } from '../middleware/error.js';
 import { setPin, verifyPin } from '../services/wallet.service.js';
+import { tryProvisionInstantVirtualAccount } from '../services/kyc.service.js';
 
 export const userRoutes = Router();
 
 userRoutes.use(requireAuth);
 
 userRoutes.get('/profile', async (req, res) => {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+  let user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+
+  if (!user.virtualAccountNumber) {
+    await tryProvisionInstantVirtualAccount(user.id);
+    user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+  }
+
   res.json({
     id: user.id,
     full_name: user.fullName,
