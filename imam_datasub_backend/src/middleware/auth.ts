@@ -33,6 +33,16 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     if (!user) {
       return res.status(401).json({ status: false, message: 'Account no longer exists' });
     }
+    if (user.accountStatus === 'DELETED') {
+      return res.status(401).json({ status: false, message: 'Account no longer exists', code: 'ACCOUNT_DELETED' });
+    }
+    if (user.accountStatus === 'DEACTIVATED') {
+      return res.status(403).json({
+        status: false,
+        message: 'Your account is deactivated. Contact support to reactivate it.',
+        code: 'ACCOUNT_DEACTIVATED'
+      });
+    }
 
     req.user = {
       id: user.id,

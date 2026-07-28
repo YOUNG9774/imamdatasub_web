@@ -117,6 +117,14 @@ authRoutes.post('/login', async (req, res) => {
     throw new ApiError(401, 'Invalid email/phone or password', 'INVALID_CREDENTIALS');
   }
 
+  if (user.accountStatus === 'DEACTIVATED') {
+    throw new ApiError(
+      403,
+      'Your account is deactivated. Contact support to reactivate it.',
+      'ACCOUNT_DEACTIVATED'
+    );
+  }
+
   const tokens = await issueAuthTokens({ id: user.id, email: user.email });
   res.json(await authResponse(user, tokens));
 });

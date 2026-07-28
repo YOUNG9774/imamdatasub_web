@@ -15,6 +15,12 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum AccountStatus {
+  ACTIVE
+  DEACTIVATED
+  DELETED
+}
+
 enum KycStatus {
   UNVERIFIED
   PENDING
@@ -73,6 +79,13 @@ model User {
   bvnLast4             String?
   bvnVerifiedAt        DateTime?
   kycFailureReason     String?
+
+  // Account lifecycle - checked immediately in auth middleware so
+  // deactivation/deletion takes effect right away, rather than waiting for
+  // the current access token to naturally expire.
+  accountStatus        AccountStatus @default(ACTIVE)
+  deactivatedAt        DateTime?
+  deletionReason       String?
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
   transactions         Transaction[]

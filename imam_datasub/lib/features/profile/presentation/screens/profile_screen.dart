@@ -14,6 +14,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_names.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../shared/widgets/kd_card.dart';
+import '../../../../shared/widgets/kd_pin_input.dart';
 import '../../../admin/presentation/providers/admin_pricing_provider.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -172,8 +173,8 @@ class ProfileScreen extends ConsumerWidget {
                       iconColor: AppColors.error500,
                       title: 'Deactivate / Delete Account',
                       titleColor: AppColors.error500,
-                      subtitle: 'Request permanent account removal',
-                      onTap: () => _confirmDeleteAccount(context, ref),
+                      subtitle: 'Temporarily pause or permanently close your account',
+                      onTap: () => _showAccountClosureSheet(context, ref),
                     ),
                   ],
                 ),
@@ -284,13 +285,87 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  static void _confirmDeleteAccount(BuildContext context, WidgetRef ref) {
+  static void _showAccountClosureSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Manage your account',
+              style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.pause_circle_outline_rounded),
+              title: const Text(
+                'Deactivate account',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: const Text(
+                'Temporarily disables login. Contact support any time to reactivate — your data and wallet stay intact.',
+              ),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _confirmAccountAction(
+                  context,
+                  ref,
+                  isDelete: false,
+                );
+              },
+            ),
+            const Divider(height: 24),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(
+                Icons.delete_forever_rounded,
+                color: AppColors.error500,
+              ),
+              title: const Text(
+                'Delete account',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.error500,
+                ),
+              ),
+              subtitle: const Text(
+                'Permanently removes your personal details. Your wallet must be empty first, and this cannot be undone.',
+              ),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _confirmAccountAction(
+                  context,
+                  ref,
+                  isDelete: true,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static void _confirmAccountAction(
+    BuildContext context,
+    WidgetRef ref, {
+    required bool isDelete,
+  }) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete account?'),
-        content: const Text(
-          'This will disable your login and anonymize your personal profile. Transaction records may be retained for audit and compliance.',
+        title: Text(isDelete ? 'Delete account?' : 'Deactivate account?'),
+        content: Text(
+          isDelete
+              ? 'This permanently anonymizes your profile and cannot be undone. Your wallet must be at ₦0 first. Transaction records are retained where required by law.'
+              : 'You will be signed out and unable to log in until you contact support to reactivate. Your data and wallet balance stay safe.',
         ),
         actions: [
           TextButton(
@@ -298,41 +373,67 @@ class ProfileScreen extends ConsumerWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () async {
+            onPressed: () {
               Navigator.of(ctx).pop();
-              try {
-                await ref
-                    .read(dioClientProvider)
-                    .delete<Map<String, dynamic>>(AppEndpoints.deleteAccount);
-                await ref.read(authNotifierProvider.notifier).logout();
-                if (context.mounted) {
-                  context.showSnackBar('Account deleted successfully');
-                  context.go(RouteNames.login);
-                }
-              } on DioException catch (e) {
-                if (context.mounted) {
-                  context.showSnackBar(
-                    e.response?.data['message']?.toString() ??
-                        'Could not delete account',
-                    isError: true,
-                  );
-                }
-              } catch (_) {
-                if (context.mounted)
-                  context.showSnackBar(
-                    'Could not delete account',
-                    isError: true,
-                  );
-              }
+              _requestCredentialAndSubmit(context, ref, isDelete: isDelete);
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: AppColors.error500),
+            child: Text(
+              isDelete ? 'Continue' : 'Deactivate',
+              style: const TextStyle(color: AppColors.error500),
             ),
           ),
         ],
       ),
     );
+  }
+
+  static Future<void> _requestCredentialAndSubmit(
+    BuildContext context,
+    WidgetRef ref, {
+    required bool isDelete,
+  }) async {
+    final credential = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _CredentialConfirmSheet(isDelete: isDelete),
+    );
+    if (credential == null || credential.isEmpty || !context.mounted) return;
+
+    try {
+      if (isDelete) {
+        await ref.read(dioClientProvider).delete<Map<String, dynamic>>(
+          AppEndpoints.deleteAccount,
+          data: {'credential': credential},
+        );
+        await ref.read(authNotifierProvider.notifier).logout();
+        if (context.mounted) {
+          context.showSnackBar('Account deleted successfully');
+          context.go(RouteNames.login);
+        }
+      } else {
+        await ref.read(dioClientProvider).post<Map<String, dynamic>>(
+          AppEndpoints.deactivateAccount,
+          data: {'credential': credential},
+        );
+        await ref.read(authNotifierProvider.notifier).logout();
+        if (context.mounted) {
+          context.showSnackBar('Account deactivated. Contact support to reactivate any time.');
+          context.go(RouteNames.login);
+        }
+      }
+    } on DioException catch (e) {
+      final message = e.response?.data is Map
+          ? (e.response?.data['message']?.toString() ?? 'Something went wrong')
+          : 'Something went wrong';
+      if (context.mounted) {
+        context.showSnackBar(message, isError: true);
+      }
+    } catch (_) {
+      if (context.mounted) {
+        context.showSnackBar('Something went wrong. Please try again.', isError: true);
+      }
+    }
   }
 }
 
@@ -503,6 +604,105 @@ class _KycBadge extends StatelessWidget {
           fontWeight: FontWeight.w800,
           color: color,
         ),
+      ),
+    );
+  }
+}
+
+// ── Confirms a destructive account action with the transaction PIN, ──
+// ── falling back to the account password if no PIN has been set. ────
+class _CredentialConfirmSheet extends StatefulWidget {
+  const _CredentialConfirmSheet({required this.isDelete});
+  final bool isDelete;
+
+  @override
+  State<_CredentialConfirmSheet> createState() =>
+      _CredentialConfirmSheetState();
+}
+
+class _CredentialConfirmSheetState extends State<_CredentialConfirmSheet> {
+  bool _usePassword = false;
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: 24 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            widget.isDelete ? 'Confirm deletion' : 'Confirm deactivation',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _usePassword
+                ? 'Enter your account password to continue.'
+                : 'Enter your transaction PIN to continue.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.neutral500),
+          ),
+          const SizedBox(height: 24),
+          if (_usePassword)
+            TextField(
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusMD),
+                ),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+              onSubmitted: (value) => Navigator.of(context).pop(value),
+            )
+          else
+            Center(
+              child: KDPinInput(
+                length: 4,
+                onCompleted: (pin) => Navigator.of(context).pop(pin),
+              ),
+            ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () => setState(() => _usePassword = !_usePassword),
+            child: Text(
+              _usePassword ? 'Use transaction PIN instead' : "Haven't set a PIN? Use password instead",
+            ),
+          ),
+          if (_usePassword)
+            FilledButton(
+              onPressed: () =>
+                  Navigator.of(context).pop(_passwordController.text),
+              child: const Text('Confirm'),
+            ),
+        ],
       ),
     );
   }
