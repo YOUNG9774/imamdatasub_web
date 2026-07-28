@@ -38,10 +38,11 @@ export type ProviderPurchaseInput = {
  * failure. Tighten this further once a real failure response is seen.
  */
 type AlrahuzResponse = {
-  id?: number;
+  id?: number | string;
   ident?: string;
   api_response?: string;
   Status?: string;
+  status?: string | boolean;
   detail?: string; // present on auth errors, e.g. "Authentication credentials were not provided."
   [key: string]: unknown;
 };
@@ -205,6 +206,7 @@ export class ProviderService {
         amount: input.amount,
         mobile_number: input.phone,
         Ported_number: true,
+        'request-id': input.reference,
         airtime_type: 'VTU'
       })
     });
@@ -248,7 +250,8 @@ export class ProviderService {
       };
     }
 
-    const succeeded = body.Status?.toLowerCase() === 'successful';
+    const statusText = String(body.Status ?? body.status ?? '').toLowerCase();
+    const succeeded = ['successful', 'success'].includes(statusText) || body.status === true;
     if (!succeeded) {
       console.error(`[alrahuz] purchase not successful (reference=${reference}):`, JSON.stringify(body));
     }
@@ -435,3 +438,4 @@ export class ProviderService {
 }
 
 export const providerService = new ProviderService();
+
