@@ -10,6 +10,7 @@ import '../../../../core/router/route_names.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../shared/widgets/kd_button.dart';
+import '../../../../shared/widgets/kd_pin_input.dart';
 import '../../../../shared/widgets/kd_text_field.dart';
 import '../providers/auth_provider.dart';
 
@@ -26,6 +27,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
   bool _biometricAvailable = false;
+  String _loginPin = '';
 
   @override
   void initState() {
@@ -66,11 +68,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     context.hideKeyboard();
     if (!_formKey.currentState!.validate()) return;
 
+    final needsPin = ref.read(authNotifierProvider).needsLoginPinForVerification;
+    if (needsPin && _loginPin.length != 6) {
+      context.showSnackBar(AppStrings.loginPinRequired, isError: true);
+      return;
+    }
+
     final success = await ref
         .read(authNotifierProvider.notifier)
         .login(
           identifier: _identifierController.text.trim(),
           password: _passwordController.text,
+          loginPin: needsPin ? _loginPin : null,
           rememberMe: _rememberMe,
         );
 
@@ -194,6 +203,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     return null;
                   },
                 ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.1),
+
+                if (authState.needsLoginPinForVerification) ...[
+                  const SizedBox(height: 20),
+                  Text(
+                    'New device detected',
+                    style: context.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: context.colors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Enter your 6-digit login PIN to finish signing in',
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: AppColors.neutral500,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  KDPinInput(
+                    length: 6,
+                    autofocus: false,
+                    onCompleted: (pin) => setState(() => _loginPin = pin),
+                    onChanged: (pin) => _loginPin = pin,
+                  ),
+                ],
 
                 const SizedBox(height: 12),
 

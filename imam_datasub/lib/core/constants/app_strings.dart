@@ -175,6 +175,20 @@ abstract class AppStrings {
   static const String pinLockedOut =
       'Too many attempts. Try again in 30 minutes.';
 
+  // ── Login PIN (6-digit) ───────────────────────────────────
+  static const String changeLoginPin = 'Change login PIN';
+  static const String createLoginPin = 'Create your login PIN';
+  static const String createLoginPinSubtitle =
+      'Choose a 6-digit PIN you\'ll use to log in from now on';
+  static const String confirmLoginPin = 'Confirm login PIN';
+  static const String enterLoginPin = 'Enter your login PIN';
+  static const String loginPinCreated = 'Login PIN created successfully';
+  static const String loginPinChanged = 'Login PIN changed successfully';
+  static const String loginPinRequired =
+      'Enter your 6-digit login PIN to continue';
+  static const String loginPinLockedOut =
+      'Too many attempts. Try again in 30 minutes, or log out and sign in with your password.';
+
   // ── Errors ────────────────────────────────────────────────
   static const String somethingWentWrong = 'Something went wrong';
   static const String networkError =

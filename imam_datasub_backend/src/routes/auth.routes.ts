@@ -7,6 +7,7 @@ import { koboToNaira } from '../lib/money.js';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { ApiError } from '../middleware/error.js';
+import { verifyLoginPin } from '../services/login-pin.service.js';
 import { tryProvisionInstantVirtualAccount } from '../services/kyc.service.js';
 
 export const authRoutes = Router();
@@ -41,6 +42,7 @@ async function authResponse(
       refresh_token: tokens.refreshToken,
       expires_in: tokens.expiresIn,
       requires_pin_setup: !user.pinHash,
+      requires_login_pin_setup: !user.loginPinHash,
       user: publicUser(user)
     }
   };
@@ -97,7 +99,9 @@ authRoutes.post('/login', async (req, res) => {
   const body = z
     .object({
       identifier: z.string().trim().min(3),
-      password: z.string().min(1)
+      password: z.string().min(1),
+      // Only required once the account already has a login PIN set - see below.
+      login_pin: z.string().optional()
     })
     .parse(req.body);
 
@@ -125,6 +129,19 @@ authRoutes.post('/login', async (req, res) => {
     );
   }
 
+  // Once a login PIN exists on the account, every call to /auth/login (i.e.
+  // every login from a device that isn't already holding a valid session)
+  // must also supply it - this is what makes "login on another device" ask
+  // for password AND PIN. A trusted device with a live session never calls
+  // this route again; it unlocks locally with the same PIN instead.
+  if (user.loginPinHash) {
+    if (!body.login_pin) {
+      throw new ApiError(401, 'Enter your 6-digit login PIN to continue', 'LOGIN_PIN_REQUIRED');
+    }
+    // Propagates LOGIN_PIN_LOCKED / INVALID_LOGIN_PIN as-is on failure.
+    await verifyLoginPin(user.id, body.login_pin);
+  }
+
   const tokens = await issueAuthTokens({ id: user.id, email: user.email });
   res.json(await authResponse(user, tokens));
 });
@@ -145,6 +162,10 @@ authRoutes.get('/me', requireAuth, async (req, res) => {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
   res.json({
     status: true,
-    data: { requires_pin_setup: !user.pinHash, user: publicUser(user) }
+    data: {
+      requires_pin_setup: !user.pinHash,
+      requires_login_pin_setup: !user.loginPinHash,
+      user: publicUser(user)
+    }
   });
 });

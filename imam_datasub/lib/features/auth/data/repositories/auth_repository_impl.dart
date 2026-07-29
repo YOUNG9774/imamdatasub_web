@@ -22,9 +22,10 @@ class AuthRepositoryImpl implements AuthRepository {
   final NetworkInfo _networkInfo;
 
   @override
-  Future<Either<Failure, UserEntity>> login({
+  Future<Either<Failure, AuthLoginResult>> login({
     required String identifier,
     required String password,
+    String? loginPin,
     bool rememberMe = false,
   }) async {
     if (!await _networkInfo.isConnected) {
@@ -34,6 +35,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final response = await _remote.login(
         identifier: identifier,
         password: password,
+        loginPin: loginPin,
       );
       await _local.cacheAuthResponse(response);
 
@@ -41,7 +43,19 @@ class AuthRepositoryImpl implements AuthRepository {
         await _local.saveRememberedIdentifier(identifier);
       }
 
-      return Right(response.user);
+      // The server just verified this PIN as part of the login request, so
+      // cache it locally now - this device is immediately trusted and can
+      // unlock with it next time, without a fresh /auth/login round trip.
+      if (loginPin != null && loginPin.isNotEmpty) {
+        await _local.saveLoginPinLocally(loginPin);
+      }
+
+      return Right(
+        AuthLoginResult(
+          user: response.user,
+          requiresLoginPinSetup: response.requiresLoginPinSetup,
+        ),
+      );
     } on AppException catch (e) {
       return Left(ErrorHandler.exceptionToFailure(e));
     } catch (e) {
@@ -50,7 +64,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, void>> register({
+  Future<Either<Failure, AuthLoginResult>> register({
     required String fullName,
     required String email,
     required String phone,
@@ -69,7 +83,12 @@ class AuthRepositoryImpl implements AuthRepository {
         referralCode: referralCode,
       );
       await _local.cacheAuthResponse(response);
-      return const Right(null);
+      return Right(
+        AuthLoginResult(
+          user: response.user,
+          requiresLoginPinSetup: response.requiresLoginPinSetup,
+        ),
+      );
     } on AppException catch (e) {
       return Left(ErrorHandler.exceptionToFailure(e));
     } catch (e) {
@@ -287,6 +306,67 @@ class AuthRepositoryImpl implements AuthRepository {
       return const Right(null);
     } on AppException catch (e) {
       return Left(ErrorHandler.exceptionToFailure(e));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> setLoginPin({required String pin}) async {
+    if (!await _networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+    try {
+      await _remote.setLoginPin(pin: pin);
+      await _local.saveLoginPinLocally(pin);
+      return const Right(null);
+    } on AppException catch (e) {
+      return Left(ErrorHandler.exceptionToFailure(e));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> changeLoginPin({
+    required String oldPin,
+    required String newPin,
+  }) async {
+    if (!await _networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+    try {
+      await _remote.changeLoginPin(oldPin: oldPin, newPin: newPin);
+      await _local.saveLoginPinLocally(newPin);
+      return const Right(null);
+    } on AppException catch (e) {
+      return Left(ErrorHandler.exceptionToFailure(e));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, bool>> unlockWithLoginPin({
+    required String pin,
+  }) async {
+    try {
+      // Purely local - a trusted device never re-verifies the login PIN
+      // with the server, it just gates access to the already-cached
+      // session, same as the transaction PIN's local-first check above.
+      if (await _local.isLoginPinLockedOut()) {
+        return const Left(PinFailure.lockedOut());
+      }
+
+      final isValid = await _local.verifyLoginPinLocally(pin);
+      if (!isValid) {
+        final remaining = await _local.getRemainingLoginPinAttempts();
+        if (remaining <= 0) {
+          return const Left(PinFailure.lockedOut());
+        }
+        return Left(PinFailure.wrong(attemptsLeft: remaining));
+      }
+      return const Right(true);
     } catch (e) {
       return Left(UnknownFailure(message: e.toString()));
     }

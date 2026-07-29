@@ -8,14 +8,16 @@ class LoginUseCase {
   const LoginUseCase(this._repository);
   final AuthRepository _repository;
 
-  Future<Either<Failure, UserEntity>> call({
+  Future<Either<Failure, AuthLoginResult>> call({
     required String identifier,
     required String password,
+    String? loginPin,
     bool rememberMe = false,
   }) {
     return _repository.login(
       identifier: identifier,
       password: password,
+      loginPin: loginPin,
       rememberMe: rememberMe,
     );
   }
@@ -26,7 +28,7 @@ class RegisterUseCase {
   const RegisterUseCase(this._repository);
   final AuthRepository _repository;
 
-  Future<Either<Failure, void>> call({
+  Future<Either<Failure, AuthLoginResult>> call({
     required String fullName,
     required String email,
     required String phone,
@@ -158,6 +160,39 @@ class ChangeTransactionPinUseCase {
     required String newPin,
   }) {
     return _repository.changeTransactionPin(oldPin: oldPin, newPin: newPin);
+  }
+}
+
+// ── Set Login PIN (6-digit) ────────────────────────────────
+class SetLoginPinUseCase {
+  const SetLoginPinUseCase(this._repository);
+  final AuthRepository _repository;
+
+  Future<Either<Failure, void>> call({required String pin}) {
+    return _repository.setLoginPin(pin: pin);
+  }
+}
+
+// ── Change Login PIN (6-digit) ─────────────────────────────
+class ChangeLoginPinUseCase {
+  const ChangeLoginPinUseCase(this._repository);
+  final AuthRepository _repository;
+
+  Future<Either<Failure, void>> call({
+    required String oldPin,
+    required String newPin,
+  }) {
+    return _repository.changeLoginPin(oldPin: oldPin, newPin: newPin);
+  }
+}
+
+// ── Unlock with Login PIN (local, no server round trip) ────
+class UnlockWithLoginPinUseCase {
+  const UnlockWithLoginPinUseCase(this._repository);
+  final AuthRepository _repository;
+
+  Future<Either<Failure, bool>> call({required String pin}) {
+    return _repository.unlockWithLoginPin(pin: pin);
   }
 }
 

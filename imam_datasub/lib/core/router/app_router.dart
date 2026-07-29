@@ -12,6 +12,8 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/otp_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
+import '../../features/auth/presentation/screens/set_login_pin_screen.dart';
+import '../../features/auth/presentation/screens/login_pin_unlock_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/home/presentation/screens/main_shell.dart';
 import '../../features/home/presentation/screens/services_screen.dart';
@@ -92,6 +94,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.forgotPassword,
         builder: (_, __) => const ForgotPasswordScreen(),
+      ),
+
+      // ── Login PIN (6-digit) ────────────────────────────────
+      GoRoute(
+        path: RouteNames.pinSetup,
+        builder: (_, __) => const SetLoginPinScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.loginPinUnlock,
+        builder: (_, __) => const LoginPinUnlockScreen(),
       ),
 
       // ── Main Shell (bottom nav) ───────────────────────────
@@ -233,6 +245,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                     builder: (_, __) => const ChangePinScreen(),
                   ),
                   GoRoute(
+                    path: 'login-pin',
+                    builder: (_, __) => const ChangeLoginPinScreen(),
+                  ),
+                  GoRoute(
                     path: 'security',
                     builder: (_, __) => const SecurityScreen(),
                   ),
@@ -296,8 +312,25 @@ String? _guard(AsyncValue<AuthStatus> authState, GoRouterState state) {
 
   return authState.when(
     data: (status) {
-      if (status == AuthStatus.authenticated) return null;
-      return RouteNames.login;
+      switch (status) {
+        case AuthStatus.authenticated:
+          // Don't let a fully authenticated user linger on the PIN
+          // setup/unlock screens (e.g. after a hot restart mid-flow).
+          if (location == RouteNames.pinSetup ||
+              location == RouteNames.loginPinUnlock) {
+            return RouteNames.home;
+          }
+          return null;
+        case AuthStatus.pinSetupRequired:
+          return location == RouteNames.pinSetup ? null : RouteNames.pinSetup;
+        case AuthStatus.pinLockRequired:
+          return location == RouteNames.loginPinUnlock
+              ? null
+              : RouteNames.loginPinUnlock;
+        case AuthStatus.unauthenticated:
+        case AuthStatus.loading:
+          return RouteNames.login;
+      }
     },
     loading: () => null, // Stay on current screen during load
     error: (_, __) => RouteNames.login,

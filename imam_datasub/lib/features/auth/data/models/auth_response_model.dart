@@ -8,6 +8,7 @@ class AuthResponseModel {
     this.expiresIn,
     this.requiresOtp = false,
     this.requiresPinSetup = false,
+    this.requiresLoginPinSetup = false,
   });
 
   final String accessToken;
@@ -16,6 +17,7 @@ class AuthResponseModel {
   final int? expiresIn;
   final bool requiresOtp;
   final bool requiresPinSetup;
+  final bool requiresLoginPinSetup;
 
   factory AuthResponseModel.fromJson(Map<String, dynamic> json) {
     final data = json['data'] as Map<String, dynamic>? ?? json;
@@ -34,6 +36,7 @@ class AuthResponseModel {
       requiresOtp: data['requires_otp'] == true,
       requiresPinSetup: data['requires_pin_setup'] == true ||
           data['has_pin'] == false,
+      requiresLoginPinSetup: data['requires_login_pin_setup'] == true,
     );
   }
 

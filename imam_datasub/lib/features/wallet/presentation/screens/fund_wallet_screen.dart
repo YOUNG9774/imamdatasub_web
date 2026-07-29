@@ -129,11 +129,12 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
     var accountNumber = wallet?.virtualAccountNumber;
 
     if (accountNumber == null || accountNumber.isEmpty) {
-      // Cached wallet state doesn't have one yet — ask the backend directly.
+      // Cached wallet state does not have one yet - ask the backend directly.
       // /wallet/virtual-account self-provisions on the fly if it's missing, so
       // this succeeds for most users without needing a manual refresh.
-      final result =
-          await ref.read(walletRepositoryProvider).getVirtualAccount();
+      final result = await ref
+          .read(walletRepositoryProvider)
+          .getVirtualAccount();
       if (!mounted) return;
 
       final fetched = result.fold((_) => null, (w) => w);
@@ -141,7 +142,7 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
 
       if (accountNumber == null || accountNumber.isEmpty) {
         context.showSnackBar(
-          "We're setting up your account — please try again in a moment.",
+          "We're setting up your account - please try again in a moment.",
           isError: true,
         );
         return;
@@ -150,6 +151,8 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
       wallet = fetched;
       ref.read(walletNotifierProvider.notifier).refresh();
     }
+
+    final safeAccountNumber = accountNumber!;
 
     if (!mounted) return;
     showModalBottomSheet<void>(
@@ -161,9 +164,9 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
         child: _AccountDetailsSheet(
           title: 'Virtual Account',
           message:
-              'Transfer any amount from ₦100 and above. Your wallet will be credited automatically once payment is confirmed.',
+              'Transfer any amount from NGN100 and above. Your wallet will be credited automatically once payment is confirmed.',
           bankName: wallet?.virtualAccountBank ?? 'Bank',
-          accountNumber: accountNumber,
+          accountNumber: safeAccountNumber,
           accountName: wallet?.virtualAccountName ?? 'IMAM DATASUB',
           onCopy: _copy,
         ),

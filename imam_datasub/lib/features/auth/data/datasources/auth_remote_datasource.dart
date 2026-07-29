@@ -10,6 +10,7 @@ abstract class AuthRemoteDataSource {
   Future<AuthResponseModel> login({
     required String identifier,
     required String password,
+    String? loginPin,
   });
 
   Future<AuthResponseModel> register({
@@ -46,6 +47,13 @@ abstract class AuthRemoteDataSource {
 
   Future<void> changePin({required String oldPin, required String newPin});
 
+  Future<void> setLoginPin({required String pin});
+
+  Future<void> changeLoginPin({
+    required String oldPin,
+    required String newPin,
+  });
+
   Future<void> changePassword({
     required String oldPassword,
     required String newPassword,
@@ -61,11 +69,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<AuthResponseModel> login({
     required String identifier,
     required String password,
+    String? loginPin,
   }) async {
     try {
       final response = await _dio.post(
         AppEndpoints.login,
-        data: {'identifier': identifier.trim(), 'password': password},
+        data: {
+          'identifier': identifier.trim(),
+          'password': password,
+          if (loginPin != null && loginPin.isNotEmpty) 'login_pin': loginPin,
+        },
       );
       return AuthResponseModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -207,13 +220,44 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
+  Future<void> setLoginPin({required String pin}) async {
+    try {
+      await _dio.post(AppEndpoints.setLoginPin, data: {'pin': pin});
+    } on DioException catch (e) {
+      throw ErrorHandler.handleException(e);
+    }
+  }
+
+  @override
+  Future<void> changeLoginPin({
+    required String oldPin,
+    required String newPin,
+  }) async {
+    try {
+      await _dio.post(
+        AppEndpoints.changeLoginPin,
+        data: {'old_pin': oldPin, 'new_pin': newPin},
+      );
+    } on DioException catch (e) {
+      throw ErrorHandler.handleException(e);
+    }
+  }
+
+  @override
   Future<void> changePassword({
     required String oldPassword,
     required String newPassword,
   }) async {
-    throw const AuthException(
-      message: 'Password change will be added after MVP launch.',
-      code: 'PASSWORD_CHANGE_DISABLED',
-    );
+    try {
+      await _dio.post(
+        AppEndpoints.changePassword,
+        data: {
+          'old_password': oldPassword,
+          'new_password': newPassword,
+        },
+      );
+    } on DioException catch (e) {
+      throw ErrorHandler.handleException(e);
+    }
   }
 }

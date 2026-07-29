@@ -13,6 +13,12 @@ abstract class RouteNames {
   static const forgotPassword = '/forgot-password';
   static const resetPassword = '/reset-password';
 
+  // ── Login PIN (6-digit) ────────────────────────────────────
+  // Reached only from AuthStatus.pinSetupRequired / pinLockRequired -
+  // see app_router.dart's _guard.
+  static const pinSetup = '/pin-setup';
+  static const loginPinUnlock = '/pin-unlock';
+
   // ── Main tabs ─────────────────────────────────────────────
   static const home = '/home/dashboard';
   static const services = '/home/services';
@@ -56,6 +62,7 @@ abstract class RouteNames {
   static const editProfile = '/home/profile/edit';
   static const changePassword = '/home/profile/password';
   static const changePin = '/home/profile/pin';
+  static const changeLoginPin = '/home/profile/login-pin';
   static const security = '/home/profile/security';
 
   // ── Settings ──────────────────────────────────────────────

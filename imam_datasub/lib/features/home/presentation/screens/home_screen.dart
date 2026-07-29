@@ -15,6 +15,7 @@ import '../../../../shared/widgets/quick_action_grid.dart';
 import '../../../../shared/widgets/transaction_tile.dart';
 import '../../../../shared/widgets/wallet_card.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../notifications/presentation/providers/notification_provider.dart';
 import '../../../transactions/domain/entities/transaction_entity.dart';
 import '../../../transactions/presentation/providers/transactions_provider.dart';
 import '../../../wallet/presentation/providers/wallet_provider.dart';
@@ -28,6 +29,68 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final Set<String> _shownWelcomeNoticeIds = <String>{};
+
+  void _maybeShowWelcomeNotice(List<AppNotification>? notifications) {
+    if (notifications == null || notifications.isEmpty) return;
+
+    final notice = notifications.cast<AppNotification?>().firstWhere((item) {
+      if (item == null ||
+          item.isRead ||
+          _shownWelcomeNoticeIds.contains(item.id)) {
+        return false;
+      }
+      final type = item.type?.toLowerCase();
+      return type == 'admin_broadcast' || type == 'promo' || type == 'system';
+    }, orElse: () => null);
+
+    if (notice == null) return;
+    _shownWelcomeNoticeIds.add(notice.id);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 22,
+            vertical: 24,
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+          contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          title: Text(
+            notice.title.isNotEmpty ? notice.title : 'Important update',
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 420),
+            child: SingleChildScrollView(
+              child: Text(
+                notice.body,
+                style: Theme.of(
+                  dialogContext,
+                ).textTheme.bodyMedium?.copyWith(height: 1.45),
+              ),
+            ),
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: KDButton(
+                label: 'Okay',
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                gradient: AppColors.primaryGradient,
+              ),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      await ref.read(notificationsProvider.notifier).markRead([notice.id]);
+    });
+  }
+
   Future<void> _onRefresh() async {
     await Future.wait([
       ref.read(walletNotifierProvider.notifier).refresh(),
@@ -45,6 +108,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final bannersAsync = ref.watch(bannersProvider);
     final recentTxAsync = ref.watch(recentTransactionsProvider);
     final unreadCount = ref.watch(unreadNotificationCountProvider);
+    _maybeShowWelcomeNotice(ref.watch(notificationsProvider).valueOrNull);
 
     return Scaffold(
       body: SafeArea(
@@ -57,7 +121,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Top bar: greeting + notifications ────────
+                // Top bar: greeting + notifications
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppDimensions.screenPaddingH,
@@ -108,8 +172,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       KDIconButton(
                         icon: Icons.notifications_outlined,
                         badge: unreadCount,
-                        onPressed: () =>
-                            context.push(RouteNames.notifications),
+                        onPressed: () => context.push(RouteNames.notifications),
                       ),
                     ],
                   ),
@@ -117,7 +180,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 const SizedBox(height: 8),
 
-                // ── Wallet Card ───────────────────────────────
+                // Wallet card
                 walletState.when(
                   loading: () => const WalletCardShimmer(),
                   error: (_, __) => WalletCard(
@@ -125,21 +188,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     name: user?.fullName ?? '',
                     accountNumber: user?.virtualAccountNumber ?? '----------',
                     isBalanceHidden: balanceHidden,
-                    onToggleBalance: () => ref
-                        .read(balanceVisibilityProvider.notifier)
-                        .state = !balanceHidden,
+                    onToggleBalance: () =>
+                        ref.read(balanceVisibilityProvider.notifier).state =
+                            !balanceHidden,
                     onFund: () => context.push(RouteNames.fundWallet),
                     onTransfer: () => context.push(RouteNames.walletTransfer),
                   ),
                   data: (wallet) => WalletCard(
                     balance: wallet.totalBalance,
                     name: user?.fullName ?? '',
-                    accountNumber:
-                        wallet.virtualAccountNumber ?? '----------',
+                    accountNumber: wallet.virtualAccountNumber ?? '----------',
                     isBalanceHidden: balanceHidden,
-                    onToggleBalance: () => ref
-                        .read(balanceVisibilityProvider.notifier)
-                        .state = !balanceHidden,
+                    onToggleBalance: () =>
+                        ref.read(balanceVisibilityProvider.notifier).state =
+                            !balanceHidden,
                     onFund: () => context.push(RouteNames.fundWallet),
                     onTransfer: () => context.push(RouteNames.walletTransfer),
                   ),
@@ -147,8 +209,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 const SizedBox(height: 24),
 
-                // ── Quick Actions ─────────────────────────────
-                const KDSectionHeader(title: 'Quick actions'),
+                // Quick actions
+                // Quick actions
                 const SizedBox(height: 4),
                 QuickActionGrid(
                   actions: [
@@ -213,18 +275,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 const SizedBox(height: 24),
 
-                // ── Promo Banners ─────────────────────────────
+                // Promo banners
                 bannersAsync.when(
                   loading: () => Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppDimensions.screenPaddingH),
+                      horizontal: AppDimensions.screenPaddingH,
+                    ),
                     child: KDShimmer(
                       child: Container(
                         height: AppDimensions.bannerHeight,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius:
-                              BorderRadius.circular(AppDimensions.bannerRadius),
+                          borderRadius: BorderRadius.circular(
+                            AppDimensions.bannerRadius,
+                          ),
                         ),
                       ),
                     ),
@@ -245,7 +309,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                 const SizedBox(height: 24),
 
-                // ── Recent Transactions ───────────────────────
+                // Recent transactions
                 KDSectionHeader(
                   title: 'Recent transactions',
                   actionLabel: 'See all',
@@ -264,18 +328,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         )
                       : Column(
                           children: transactions
-                              .map((tx) => TransactionTile(
-                                    title: tx.title,
-                                    subtitle: tx.subtitle,
-                                    amount: tx.amount,
-                                    date: tx.date,
-                                    status: _mapStatus(tx.status),
-                                    type: _mapType(tx.type),
-                                    isCredit: tx.isCredit,
-                                    onTap: () => context.push(
-                                      '${RouteNames.transactions}/${tx.id}',
-                                    ),
-                                  ))
+                              .map(
+                                (tx) => TransactionTile(
+                                  title: tx.title,
+                                  subtitle: tx.subtitle,
+                                  amount: tx.amount,
+                                  date: tx.date,
+                                  status: _mapStatus(tx.status),
+                                  type: _mapType(tx.type),
+                                  isCredit: tx.isCredit,
+                                  onTap: () => context.push(
+                                    '${RouteNames.transactions}/${tx.id}',
+                                  ),
+                                ),
+                              )
                               .toList(),
                         ),
                 ),

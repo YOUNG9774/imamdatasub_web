@@ -5,7 +5,7 @@ import { dataPlanPricingService } from './data-plan-pricing.service.js';
 import { DATA_PLANS, type DataPlan } from './data-plans.data.js';
 
 export type ProviderPurchaseInput = {
-  network: string; // Alrahuz network ID, e.g. "1" for MTN — see NETWORK_IDS below
+  network: string; // Alrahuz network ID, e.g. "1" for MTN - see NETWORK_IDS below
   phone: string;
   amount: number;
   planId?: string; // Alrahuz plan ID, required for data purchases
@@ -33,10 +33,16 @@ export type ProviderPurchaseInput = {
  *   "Ported_number": true
  * }
  * The failure shape hasn't been observed yet (e.g. insufficient Alrahuz balance,
- * invalid plan/network combo, invalid phone) — if `Status` ever comes back as
+ * invalid plan/network combo, invalid phone) - if `Status` ever comes back as
  * something other than "successful", or the request fails outright, treat it as a
  * failure. Tighten this further once a real failure response is seen.
  */
+
+export type ProviderResultPinInput = {
+  examType: 'WAEC' | 'NECO' | 'NABTEB';
+  quantity: number;
+  reference: string;
+};
 type AlrahuzResponse = {
   id?: number | string;
   ident?: string;
@@ -214,14 +220,46 @@ export class ProviderService {
     return this.normalize(response, input.reference);
   }
 
+
+  async buyResultPin(input: ProviderResultPinInput) {
+    if (env.MOCK_PROVIDER) {
+      return {
+        status: true,
+        providerRef: `MOCK-${input.reference}`,
+        message: `${input.examType} PIN purchase queued`,
+        pin: `MOCK-${input.examType}-${input.reference}`,
+        pins: [`MOCK-${input.examType}-${input.reference}`],
+        serial: input.reference,
+        raw: {}
+      };
+    }
+
+    const baseUrl = env.ALRAHUZ_BASE_URL.replace(/\/$/, '');
+    const path = env.ALRAHUZ_EXAM_PIN_PATH.startsWith('/')
+      ? env.ALRAHUZ_EXAM_PIN_PATH
+      : `/${env.ALRAHUZ_EXAM_PIN_PATH}`;
+
+    const response = await fetch(`${baseUrl}${path}`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify({
+        exam_name: this.examId(input.examType),
+        quantity: input.quantity,
+        'request-id': input.reference,
+        request_id: input.reference
+      })
+    });
+
+    return this.normalizeResultPin(response, input.reference);
+  }
   /**
    * Alrahuz returns HTTP 200/201 with a body `Status` field ("successful" on success),
    * separate from HTTP status. A non-2xx HTTP response (e.g. 401 with a `detail` field)
    * is also treated as a failure. `ident` (Alrahuz's own transaction ID) is preferred as
    * providerRef when present, since it's what you'd use to query the transaction status
-   * back from Alrahuz later — falls back to our own reference if it's missing.
+   * back from Alrahuz later - falls back to our own reference if it's missing.
    *
-   * Also opportunistically records `balance_after` — this is YOUR OWN remaining
+   * Also opportunistically records `balance_after` - this is YOUR OWN remaining
    * balance at Alrahuz, not anything related to the customer's in-app wallet.
    * It's the one number Alrahuz actually exposes for "am I about to run dry",
    * so every response (success or failure) that includes it updates
@@ -245,7 +283,7 @@ export class ProviderService {
         status: false,
         providerRef: reference,
         message: this.isLikelyBalanceIssue(body)
-          ? 'Service temporarily unavailable — please try again shortly'
+          ? 'Service temporarily unavailable - please try again shortly'
           : (body.detail ?? body.api_response ?? `Provider returned HTTP ${response.status}`)
       };
     }
@@ -262,15 +300,60 @@ export class ProviderService {
       message: succeeded
         ? (body.api_response ?? 'Transaction successful')
         : this.isLikelyBalanceIssue(body)
-          ? 'Service temporarily unavailable — please try again shortly'
+          ? 'Service temporarily unavailable - please try again shortly'
           : (body.api_response ?? `Provider status: ${body.Status ?? 'unknown'}`),
       raw: body
     };
   }
 
+
+  private async normalizeResultPin(response: Response, reference: string) {
+    const body = (await response.json().catch(() => ({}))) as AlrahuzResponse;
+
+    if (body.balance_after !== undefined) {
+      await this.recordProviderBalance(body.balance_after).catch((err) =>
+        console.error('[alrahuz-balance] failed to record balance:', err)
+      );
+    }
+
+    if (!response.ok) {
+      console.error(`[alrahuz] exam pin failed (reference=${reference}, http=${response.status}):`, JSON.stringify(body));
+      return {
+        status: false,
+        providerRef: reference,
+        message: body.detail ?? body.api_response ?? `Provider returned HTTP ${response.status}`,
+        raw: body
+      };
+    }
+
+    const statusText = String(body.Status ?? body.status ?? '').toLowerCase();
+    const succeeded = ['successful', 'success'].includes(statusText) || body.status === true;
+    if (!succeeded) {
+      console.error(`[alrahuz] exam pin not successful (reference=${reference}):`, JSON.stringify(body));
+    }
+
+    const rawPins = body.pins ?? body.pin ?? (body.description as any)?.trueResponse;
+    const pins = Array.isArray(rawPins)
+      ? rawPins.map((item) => String(item))
+      : rawPins && typeof rawPins === 'object'
+        ? Object.values(rawPins as Record<string, unknown>).map((item) => String(item))
+        : rawPins
+          ? [String(rawPins)]
+          : [];
+
+    return {
+      status: succeeded,
+      providerRef: body.ident ?? String(body.id ?? reference),
+      message: succeeded ? (body.api_response ?? 'Transaction successful') : (body.api_response ?? `Provider status: ${body.Status ?? body.status ?? 'unknown'}`),
+      pin: pins[0],
+      pins,
+      serial: this.stringValue(body.serial ?? body.Serial ?? body.serial_number),
+      raw: body
+    };
+  }
   /**
    * Keeps customer-facing messaging generic when the real cause is YOUR
-   * Alrahuz balance running low — telling a customer "insufficient balance"
+   * Alrahuz balance running low - telling a customer "insufficient balance"
    * reads as their own wallet being the problem, which it isn't. The real
    * detail is always still logged above and captured in ProviderBalanceStatus
    * for you to see. Tighten this once you've seen a real low-balance failure
@@ -285,7 +368,7 @@ export class ProviderService {
    * Persists Alrahuz's own reported balance and fires a low-balance alert (a
    * log line, throttled by ALRAHUZ_LOW_BALANCE_ALERT_COOLDOWN_MINUTES so it
    * doesn't spam on every transaction once you're under the threshold).
-   * Visible in the admin panel via ProviderBalanceStatus. Never throws — a
+   * Visible in the admin panel via ProviderBalanceStatus. Never throws - a
    * failure to record this must never break an actual purchase.
    */
   private async recordProviderBalance(rawBalance: unknown) {
@@ -311,8 +394,8 @@ export class ProviderService {
     if (alreadyAlerted) return;
 
     console.error(
-      `[alrahuz-balance] LOW BALANCE ALERT: only ₦${balance} left at Alrahuz ` +
-        `(threshold ₦${env.ALRAHUZ_LOW_BALANCE_THRESHOLD}) — top up now to avoid failed customer purchases.`
+      `[alrahuz-balance] LOW BALANCE ALERT: only NGN${balance} left at Alrahuz ` +
+        `(threshold NGN${env.ALRAHUZ_LOW_BALANCE_THRESHOLD}) - top up now to avoid failed customer purchases.`
     );
     await prisma.providerBalanceStatus.update({
       where: { provider: 'alrahuz' },
@@ -426,6 +509,17 @@ export class ProviderService {
     return undefined;
   }
 
+
+  private examId(examType: ProviderResultPinInput['examType']) {
+    switch (examType) {
+      case 'WAEC':
+        return env.ALRAHUZ_WAEC_EXAM_ID;
+      case 'NECO':
+        return env.ALRAHUZ_NECO_EXAM_ID;
+      case 'NABTEB':
+        return env.ALRAHUZ_NABTEB_EXAM_ID;
+    }
+  }
   private networkId(network: string) {
     const mapped = NETWORK_IDS[network.toUpperCase()];
     if (mapped) return mapped;
@@ -438,4 +532,3 @@ export class ProviderService {
 }
 
 export const providerService = new ProviderService();
-

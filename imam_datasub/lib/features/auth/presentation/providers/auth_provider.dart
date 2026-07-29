@@ -71,6 +71,15 @@ final changeTransactionPinUseCaseProvider = Provider(
 final changePasswordUseCaseProvider = Provider(
   (ref) => ChangePasswordUseCase(ref.read(authRepositoryProvider)),
 );
+final setLoginPinUseCaseProvider = Provider(
+  (ref) => SetLoginPinUseCase(ref.read(authRepositoryProvider)),
+);
+final changeLoginPinUseCaseProvider = Provider(
+  (ref) => ChangeLoginPinUseCase(ref.read(authRepositoryProvider)),
+);
+final unlockWithLoginPinUseCaseProvider = Provider(
+  (ref) => UnlockWithLoginPinUseCase(ref.read(authRepositoryProvider)),
+);
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Auth State Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 class AuthState {
@@ -79,12 +88,18 @@ class AuthState {
     this.status = AuthStatus.unauthenticated,
     this.isLoading = false,
     this.errorMessage,
+    this.needsLoginPinForVerification = false,
   });
 
   final UserEntity? user;
   final AuthStatus status;
   final bool isLoading;
   final String? errorMessage;
+
+  /// True after a login attempt on a new/unrecognized device comes back with
+  /// LOGIN_PIN_REQUIRED - the account already has a login PIN, so the login
+  /// screen should reveal a 6-digit PIN field and resubmit with it included.
+  final bool needsLoginPinForVerification;
 
   bool get isAuthenticated => status == AuthStatus.authenticated;
 
@@ -94,12 +109,15 @@ class AuthState {
     bool? isLoading,
     String? errorMessage,
     bool clearError = false,
+    bool? needsLoginPinForVerification,
   }) {
     return AuthState(
       user: user ?? this.user,
       status: status ?? this.status,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      needsLoginPinForVerification:
+          needsLoginPinForVerification ?? this.needsLoginPinForVerification,
     );
   }
 }
@@ -127,17 +145,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
 
     final result = await _ref.read(getCurrentUserUseCaseProvider).call();
-    result.fold(
-      (failure) {
+    await result.fold<Future<void>>(
+      (failure) async {
         state = state.copyWith(
           status: AuthStatus.unauthenticated,
           isLoading: false,
         );
       },
-      (user) {
+      (user) async {
+        // A valid session on this device: gate on the local login PIN
+        // (no server call - see AuthRepository.unlockWithLoginPin) rather
+        // than dropping straight into the app.
+        final hasLocalPin =
+            await _ref.read(authLocalDataSourceProvider).hasLoginPinSet();
         state = state.copyWith(
           user: user,
-          status: AuthStatus.authenticated,
+          status:
+              hasLocalPin ? AuthStatus.pinLockRequired : AuthStatus.authenticated,
           isLoading: false,
         );
       },
@@ -148,29 +172,48 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> login({
     required String identifier,
     required String password,
+    String? loginPin,
     bool rememberMe = false,
   }) async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(
+      isLoading: true,
+      clearError: true,
+      needsLoginPinForVerification: false,
+    );
 
     final result = await _ref
         .read(loginUseCaseProvider)
         .call(
           identifier: identifier,
           password: password,
+          loginPin: loginPin,
           rememberMe: rememberMe,
         );
 
     return result.fold(
       (failure) {
-        state = state.copyWith(isLoading: false, errorMessage: failure.message);
+        // The account already has a login PIN (this is an
+        // unrecognized/new device) - reveal the PIN field instead of
+        // just showing a generic error.
+        final needsPin = failure.code == 'LOGIN_PIN_REQUIRED';
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: needsPin
+              ? 'Enter your 6-digit login PIN to continue'
+              : failure.message,
+          needsLoginPinForVerification: needsPin,
+        );
         return false;
       },
-      (user) {
+      (loginResult) {
         state = state.copyWith(
-          user: user,
-          status: AuthStatus.authenticated,
+          user: loginResult.user,
+          status: loginResult.requiresLoginPinSetup
+              ? AuthStatus.pinSetupRequired
+              : AuthStatus.authenticated,
           isLoading: false,
           clearError: true,
+          needsLoginPinForVerification: false,
         );
         _syncRouterAuthState();
         return true;
@@ -178,7 +221,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
-  Future<Either<Failure, void>> register({
+  Future<Either<Failure, AuthLoginResult>> register({
     required String fullName,
     required String email,
     required String phone,
@@ -197,31 +240,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
           referralCode: referralCode,
         );
 
-    await result.fold<Future<void>>(
-      (failure) async {
+    result.fold(
+      (failure) {
         state = state.copyWith(isLoading: false, errorMessage: failure.message);
       },
-      (_) async {
-        final currentUser = await _ref
-            .read(getCurrentUserUseCaseProvider)
-            .call();
-        currentUser.fold(
-          (failure) {
-            state = state.copyWith(
-              isLoading: false,
-              errorMessage: failure.message,
-            );
-          },
-          (user) {
-            state = state.copyWith(
-              user: user,
-              status: AuthStatus.authenticated,
-              isLoading: false,
-              clearError: true,
-            );
-            _syncRouterAuthState();
-          },
+      (loginResult) {
+        // New registrants always need to set a login PIN right after this -
+        // requiresLoginPinSetup will be true here since the account was
+        // just created.
+        state = state.copyWith(
+          user: loginResult.user,
+          status: loginResult.requiresLoginPinSetup
+              ? AuthStatus.pinSetupRequired
+              : AuthStatus.authenticated,
+          isLoading: false,
+          clearError: true,
         );
+        _syncRouterAuthState();
       },
     );
 
@@ -308,6 +343,40 @@ class AuthNotifier extends StateNotifier<AuthState> {
       _syncRouterAuthState();
       return true;
     });
+  }
+
+  /// Called from the mandatory PIN-setup screen right after login/register.
+  Future<bool> completeLoginPinSetup(String pin) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    final result = await _ref.read(setLoginPinUseCaseProvider).call(pin: pin);
+    return result.fold(
+      (failure) {
+        state = state.copyWith(isLoading: false, errorMessage: failure.message);
+        return false;
+      },
+      (_) {
+        state = state.copyWith(
+          status: AuthStatus.authenticated,
+          isLoading: false,
+          clearError: true,
+        );
+        _syncRouterAuthState();
+        return true;
+      },
+    );
+  }
+
+  /// Called from the local PIN-lock screen shown on app resume. Purely
+  /// local - no server call - so a wrong/locked-out PIN never touches the
+  /// network. Returns the underlying Either so the screen can show
+  /// "X attempts remaining" / lockout messaging.
+  Future<Either<Failure, bool>> unlockWithPin(String pin) async {
+    final result = await _ref.read(unlockWithLoginPinUseCaseProvider).call(pin: pin);
+    result.fold((_) {}, (_) {
+      state = state.copyWith(status: AuthStatus.authenticated);
+      _syncRouterAuthState();
+    });
+    return result;
   }
 
   Future<void> logout() async {

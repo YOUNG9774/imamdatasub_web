@@ -7,7 +7,7 @@ import '../../../../core/di/injection.dart';
 import '../../../home/presentation/providers/home_provider.dart'
     show unreadNotificationCountProvider;
 
-// ── Notification prefs (persisted via Hive) ───────────────
+// â”€â”€ Notification prefs (persisted via Hive) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 final pushNotificationsEnabledProvider = StateProvider<bool>((ref) {
   final hive = ref.read(hiveStorageProvider);
   return hive.getSetting<bool>('notif_push', defaultValue: true) ?? true;
@@ -18,7 +18,7 @@ final promoNotificationsEnabledProvider = StateProvider<bool>((ref) {
   return hive.getSetting<bool>('notif_promo', defaultValue: true) ?? true;
 });
 
-// ── In-app notification entity ────────────────────────────
+// â”€â”€ In-app notification entity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class AppNotification {
   const AppNotification({
     required this.id,
@@ -40,10 +40,9 @@ class AppNotification {
     return AppNotification(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
-      body: json['body']?.toString() ??
-          json['message']?.toString() ??
-          '',
-      date: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+      body: json['body']?.toString() ?? json['message']?.toString() ?? '',
+      date:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
           DateTime.now(),
       type: json['type']?.toString(),
       isRead: json['is_read'] == true || json['read'] == true,
@@ -62,7 +61,7 @@ class AppNotification {
   }
 }
 
-// ── Notification remote source ─────────────────────────────
+// â”€â”€ Notification remote source â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 final _notifRemoteProvider = Provider((ref) {
   return _NotifRemote(ref.read(dioClientProvider));
 });
@@ -74,11 +73,9 @@ class _NotifRemote {
   Future<List<AppNotification>> getNotifications() async {
     try {
       final response = await _dio.get(AppEndpoints.notifications);
-      final list =
-          (response.data['data'] ?? response.data) as List<dynamic>;
+      final list = (response.data['data'] ?? response.data) as List<dynamic>;
       return list
-          .map((e) => AppNotification.fromJson(
-              e as Map<String, dynamic>))
+          .map((e) => AppNotification.fromJson(e as Map<String, dynamic>))
           .toList();
     } catch (_) {
       return [];
@@ -91,17 +88,39 @@ class _NotifRemote {
     } catch (_) {}
   }
 
+  Future<void> markRead(List<String> ids) async {
+    if (ids.isEmpty) return;
+    try {
+      await _dio.post(AppEndpoints.markNotificationRead, data: {'ids': ids});
+    } catch (_) {}
+  }
+
   Future<void> registerFcmToken(String token) async {
     try {
-      await _dio.post(
-        AppEndpoints.registerFcmToken,
-        data: {'token': token},
-      );
+      await _dio.post(AppEndpoints.registerFcmToken, data: {'token': token});
+    } catch (_) {}
+  }
+
+  Future<void> unregisterFcmToken(String token) async {
+    try {
+      await _dio.post(AppEndpoints.unregisterFcmToken, data: {'token': token});
     } catch (_) {}
   }
 }
 
-// ── FCM service ────────────────────────────────────────────
+/// Called from the auth layer right before a signed-out session's tokens are
+/// cleared, so this device stops receiving pushes for the account that just
+/// logged out (rather than silently keeping them until another user's login
+/// happens to re-own the same token).
+Future<void> unregisterDeviceForLogout(Ref ref) async {
+  final secure = ref.read(secureStorageProvider);
+  final token = await secure.getFcmToken();
+  if (token == null) return;
+  final remote = ref.read(_notifRemoteProvider);
+  await remote.unregisterFcmToken(token);
+}
+
+// â”€â”€ FCM service â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class FcmService {
   FcmService(this._ref);
   final Ref _ref;
@@ -112,17 +131,13 @@ class FcmService {
   Future<void> initialize() async {
     // Request permissions
     final messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    await messaging.requestPermission(alert: true, badge: true, sound: true);
 
     // Configure local notifications
-    const androidSettings =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings =
-        InitializationSettings(android: androidSettings);
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
+    const initSettings = InitializationSettings(android: androidSettings);
     await _localNotifications.initialize(initSettings);
 
     // Create notification channel
@@ -135,7 +150,8 @@ class FcmService {
     );
     await _localNotifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(channel);
 
     // Register FCM token
@@ -189,14 +205,12 @@ class FcmService {
   }
 }
 
-final fcmServiceProvider = Provider<FcmService>(
-    (ref) => FcmService(ref));
+final fcmServiceProvider = Provider<FcmService>((ref) => FcmService(ref));
 
-// ── Notifications list provider ────────────────────────────
+// â”€â”€ Notifications list provider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class NotificationsNotifier
     extends StateNotifier<AsyncValue<List<AppNotification>>> {
-  NotificationsNotifier(this._ref)
-      : super(const AsyncValue.loading()) {
+  NotificationsNotifier(this._ref) : super(const AsyncValue.loading()) {
     _load();
   }
 
@@ -215,19 +229,31 @@ class NotificationsNotifier
     final remote = _ref.read(_notifRemoteProvider);
     await remote.markAllRead();
     state = AsyncValue.data(
-      state.valueOrNull
-              ?.map((n) => n.copyWith(isRead: true))
-              .toList() ??
-          [],
+      state.valueOrNull?.map((n) => n.copyWith(isRead: true)).toList() ?? [],
     );
     _ref.read(unreadNotificationCountProvider.notifier).state = 0;
+  }
+
+  Future<void> markRead(List<String> ids) async {
+    final remote = _ref.read(_notifRemoteProvider);
+    await remote.markRead(ids);
+    final current = state.valueOrNull ?? [];
+    final idSet = ids.toSet();
+    final updated = current
+        .map((n) => idSet.contains(n.id) ? n.copyWith(isRead: true) : n)
+        .toList();
+    state = AsyncValue.data(updated);
+    final unread = updated.where((n) => !n.isRead).length;
+    _ref.read(unreadNotificationCountProvider.notifier).state = unread;
   }
 
   Future<void> refresh() => _load();
 }
 
-final notificationsProvider = StateNotifierProvider.autoDispose<
-    NotificationsNotifier,
-    AsyncValue<List<AppNotification>>>((ref) {
-  return NotificationsNotifier(ref);
-});
+final notificationsProvider =
+    StateNotifierProvider.autoDispose<
+      NotificationsNotifier,
+      AsyncValue<List<AppNotification>>
+    >((ref) {
+      return NotificationsNotifier(ref);
+    });

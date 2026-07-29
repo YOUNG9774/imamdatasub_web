@@ -13,6 +13,9 @@ abstract class _Keys {
   static const userId = 'kd_user_id';
   static const pinAttempts = 'kd_pin_attempts';
   static const pinLockoutUntil = 'kd_pin_lockout';
+  static const loginPin = 'kd_login_pin';
+  static const loginPinAttempts = 'kd_login_pin_attempts';
+  static const loginPinLockoutUntil = 'kd_login_pin_lockout';
   static const fcmToken = 'kd_fcm_token';
   static const onboardingComplete = 'kd_onboarding_done';
   static const rememberEmail = 'kd_remember_email';
@@ -102,6 +105,42 @@ class SecureStorageService {
   Future<void> clearPinLockout() async {
     await _delete(_Keys.pinAttempts);
     await _delete(_Keys.pinLockoutUntil);
+  }
+
+  // ── Login PIN (6-digit, used to unlock the app locally) ────
+  /// Save hashed login PIN — never store plain text
+  Future<void> saveLoginPin(String hashedPin) =>
+      _write(_Keys.loginPin, hashedPin);
+  Future<String?> getLoginPin() => _read(_Keys.loginPin);
+  Future<bool> hasLoginPin() async =>
+      (await _read(_Keys.loginPin)) != null;
+  Future<void> clearLoginPin() => _delete(_Keys.loginPin);
+
+  // ── Login PIN Lockout ───────────────────────────────────────
+  Future<void> saveLoginPinAttempts(int attempts) =>
+      _write(_Keys.loginPinAttempts, attempts.toString());
+
+  Future<int> getLoginPinAttempts() async {
+    final raw = await _read(_Keys.loginPinAttempts);
+    return int.tryParse(raw ?? '0') ?? 0;
+  }
+
+  Future<void> saveLoginPinLockoutUntil(DateTime until) => _write(
+        _Keys.loginPinLockoutUntil,
+        until.millisecondsSinceEpoch.toString(),
+      );
+
+  Future<DateTime?> getLoginPinLockoutUntil() async {
+    final raw = await _read(_Keys.loginPinLockoutUntil);
+    if (raw == null) return null;
+    final ms = int.tryParse(raw);
+    if (ms == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(ms);
+  }
+
+  Future<void> clearLoginPinLockout() async {
+    await _delete(_Keys.loginPinAttempts);
+    await _delete(_Keys.loginPinLockoutUntil);
   }
 
   // ── Biometric ─────────────────────────────────────────────

@@ -233,6 +233,124 @@ class _ChangePinScreenState extends ConsumerState<ChangePinScreen> {
   }
 }
 
+// ── Change login PIN screen (6-digit) ──────────────────────
+class ChangeLoginPinScreen extends ConsumerStatefulWidget {
+  const ChangeLoginPinScreen({super.key});
+
+  @override
+  ConsumerState<ChangeLoginPinScreen> createState() =>
+      _ChangeLoginPinScreenState();
+}
+
+class _ChangeLoginPinScreenState extends ConsumerState<ChangeLoginPinScreen> {
+  String _newPin = '';
+  int _step = 0; // 0 = enter new, 1 = confirm
+  bool _isLoading = false;
+  bool _hasError = false;
+
+  Future<void> _handlePinCompleted(String pin) async {
+    if (_step == 0) {
+      setState(() {
+        _newPin = pin;
+        _step = 1;
+      });
+    } else {
+      if (pin != _newPin) {
+        setState(() {
+          _hasError = true;
+          _step = 0;
+          _newPin = '';
+        });
+        context.showSnackBar(AppStrings.pinMismatch, isError: true);
+        return;
+      }
+
+      setState(() => _isLoading = true);
+      final useCase = ref.read(setLoginPinUseCaseProvider);
+      final result = await useCase.call(pin: pin);
+      setState(() => _isLoading = false);
+
+      if (!mounted) return;
+      result.fold(
+        (failure) {
+          setState(() {
+            _hasError = true;
+            _step = 0;
+            _newPin = '';
+          });
+          context.showSnackBar(failure.message, isError: true);
+        },
+        (_) {
+          context.showSnackBar(AppStrings.loginPinChanged);
+          context.pop();
+        },
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text(AppStrings.changeLoginPin)),
+      body: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(AppDimensions.screenPaddingH),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.primary50,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(
+                  Icons.lock_person_outlined,
+                  color: context.colors.primary,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                _step == 0
+                    ? AppStrings.createLoginPin
+                    : AppStrings.confirmLoginPin,
+                style: context.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _step == 0
+                    ? 'Choose a new 6-digit PIN for logging in'
+                    : 'Re-enter your PIN to confirm',
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.neutral500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 48),
+              if (_isLoading)
+                const CircularProgressIndicator()
+              else
+                KDPinInput(
+                  key: ValueKey('login_pin_step_$_step'),
+                  length: 6,
+                  hasError: _hasError,
+                  onCompleted: _handlePinCompleted,
+                  onChanged: (_) => setState(() => _hasError = false),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ── Main Settings screen ───────────────────────────────────
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -338,6 +456,16 @@ class SettingsScreen extends ConsumerWidget {
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => const ChangePinScreen(),
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, indent: 60),
+                    _NavigationTile(
+                      icon: Icons.lock_person_outlined,
+                      title: AppStrings.changeLoginPin,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ChangeLoginPinScreen(),
                         ),
                       ),
                     ),

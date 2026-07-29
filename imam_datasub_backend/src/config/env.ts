@@ -10,10 +10,17 @@ const EnvSchema = z.object({
   ALRAHUZ_BASE_URL: z.string().url().default('https://alrahuzdata.com.ng/api'),
   ALRAHUZ_API_TOKEN: z.string().optional(),
   ALRAHUZ_DATA_PLANS_PATH: z.string().default('/data/'),
+  ALRAHUZ_EXAM_PIN_PATH: z.string().default('/exam/'),
+  ALRAHUZ_WAEC_EXAM_ID: z.string().default('1'),
+  ALRAHUZ_NECO_EXAM_ID: z.string().default('2'),
+  ALRAHUZ_NABTEB_EXAM_ID: z.string().default('3'),
+  RESULT_PIN_WAEC_DEFAULT_PRICE_NAIRA: z.coerce.number().positive().default(5150),
+  RESULT_PIN_NECO_DEFAULT_PRICE_NAIRA: z.coerce.number().positive().default(2150),
+  RESULT_PIN_NABTEB_DEFAULT_PRICE_NAIRA: z.coerce.number().positive().default(900),
   ALRAHUZ_DATA_PLANS_CACHE_SECONDS: z.coerce.number().int().positive().default(900),
   // Alert threshold for YOUR OWN balance at Alrahuz (not any customer's wallet).
   // Below this, customer purchases will start failing even though their in-app
-  // wallets are fine — see provider.service.ts's recordProviderBalance.
+  // wallets are fine â€” see provider.service.ts's recordProviderBalance.
   ALRAHUZ_LOW_BALANCE_THRESHOLD: z.coerce.number().positive().default(2000),
   ALRAHUZ_LOW_BALANCE_ALERT_COOLDOWN_MINUTES: z.coerce.number().int().positive().default(60),
   DATA_PLAN_MARKUP_PERCENT: z.coerce.number().min(0).default(0),
@@ -22,7 +29,7 @@ const EnvSchema = z.object({
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(86_400),
   REFRESH_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(2_592_000),
   // NOTE: z.coerce.boolean() would parse the STRING "false" as true (JS's
-  // Boolean("false") === true — any non-empty string is truthy). This explicit
+  // Boolean("false") === true â€” any non-empty string is truthy). This explicit
   // string comparison is what actually respects MOCK_PROVIDER=false in .env.
   MOCK_PROVIDER: z
     .string()
@@ -59,12 +66,12 @@ try {
   env = EnvSchema.parse(process.env);
 } catch (error) {
   if (error instanceof z.ZodError) {
-    console.error('✗ Environment variable validation failed:');
+    console.error('âœ— Environment variable validation failed:');
     error.errors.forEach((err) => {
       const path = err.path.join('.');
       console.error(`  - ${path}: ${err.message}`);
     });
-    console.error('\n✗ Please check your .env file or environment variables');
+    console.error('\nâœ— Please check your .env file or environment variables');
     process.exit(1);
   }
   throw error;
@@ -83,15 +90,15 @@ if (env.NODE_ENV === 'production') {
   }
 
   if (securityIssues.length > 0) {
-    console.error('✗ Production security violations detected:');
+    console.error('âœ— Production security violations detected:');
     securityIssues.forEach((issue) => {
       console.error(`  - ${issue}`);
     });
-    console.error('\n✗ Set strong random secrets before running in production');
+    console.error('\nâœ— Set strong random secrets before running in production');
     process.exit(1);
   }
 
-  console.log('✓ All production security checks passed');
+  console.log('âœ“ All production security checks passed');
 }
 
 export { env };

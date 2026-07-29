@@ -2,6 +2,7 @@ import { getModelByName } from '@adminjs/prisma';
 import type { ResourceWithOptions } from 'adminjs';
 import { prisma } from '../../lib/prisma.js';
 import { manualWalletAdjustment } from '../../services/wallet.service.js';
+import { notifyUser } from '../../services/notification.service.js';
 import { logAdminAction } from '../audit.js';
 import { Components } from '../component-loader.js';
 import type { AdminSessionUser } from '../auth.js';
@@ -45,7 +46,34 @@ export const userResource: ResourceWithOptions = {
       delete: { isAccessible: false },
       edit: {
         isAccessible: ({ currentAdmin }) =>
-          !!currentAdmin && (currentAdmin as unknown as AdminSessionUser).role !== 'SUPPORT'
+          !!currentAdmin && (currentAdmin as unknown as AdminSessionUser).role !== 'SUPPORT',
+        after: async (response: any, _request: any, context: any) => {
+          // Only the ONE user whose record was just edited gets notified — this is a
+          // targeted per-user alert, not a broadcast, regardless of how many other
+          // users an admin edits over the course of a day.
+          const previousStatus = context?.record?.params?.kycStatus;
+          const updatedStatus = response?.record?.params?.kycStatus;
+          const userId = response?.record?.params?.id as string | undefined;
+
+          if (userId && updatedStatus && previousStatus !== updatedStatus && !response?.record?.errors) {
+            if (updatedStatus === 'VERIFIED') {
+              await notifyUser({
+                userId,
+                type: 'KYC',
+                title: 'Verification successful',
+                body: 'Your account has been verified by our team.'
+              });
+            } else if (updatedStatus === 'REJECTED') {
+              await notifyUser({
+                userId,
+                type: 'KYC',
+                title: 'Verification update',
+                body: 'There was an issue verifying your account. Please contact support for details.'
+              });
+            }
+          }
+          return response;
+        }
       },
       adjustWallet: {
         actionType: 'record',

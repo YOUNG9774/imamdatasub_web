@@ -4,6 +4,11 @@ import { Prisma, TransactionStatus, TransactionType } from '@prisma/client';
 import { ApiError } from '../middleware/error.js';
 import { koboToNaira, nairaToKobo } from '../lib/money.js';
 import { prisma } from '../lib/prisma.js';
+import { notifyUser } from './notification.service.js';
+
+function formatNaira(kobo: bigint) {
+  return `NGN${koboToNaira(kobo).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 export async function setPin(userId: string, pin: string) {
   if (!/^\d{4}$/.test(pin)) throw new ApiError(422, 'PIN must be 4 digits', 'INVALID_PIN');
@@ -133,7 +138,7 @@ export async function debitWallet(params: {
 
 /**
  * Records a wallet funding attempt as PENDING before redirecting the user to Paystack.
- * The balance is NOT touched here — it only changes once the payment is confirmed via
+ * The balance is NOT touched here - it only changes once the payment is confirmed via
  * `creditWalletByReference`, which is called from the webhook (and can also be called
  * from a manual "verify payment" endpoint as a fallback if the webhook is ever missed).
  */
@@ -168,32 +173,48 @@ export async function createPendingFunding(params: {
  * against), this is a no-op and returns the existing record without crediting again.
  */
 export async function creditWalletByReference(reference: string) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const transaction = await tx.transaction.findUnique({ where: { reference } });
     if (!transaction) throw new ApiError(404, 'Transaction not found', 'TRANSACTION_NOT_FOUND');
-    if (transaction.status === TransactionStatus.SUCCESS) return transaction;
+    if (transaction.status === TransactionStatus.SUCCESS) return { transaction, alreadyCredited: true };
 
     const user = await tx.user.update({
       where: { id: transaction.userId },
       data: { walletBalanceKobo: { increment: transaction.amountKobo } }
     });
 
-    return tx.transaction.update({
+    const updated = await tx.transaction.update({
       where: { id: transaction.id },
       data: { status: TransactionStatus.SUCCESS, balanceAfterKobo: user.walletBalanceKobo }
     });
+
+    return { transaction: updated, alreadyCredited: false };
   });
+
+  // Fired only for THIS transaction's userId, and only once (skipped on the
+  // idempotent replay branch above) - never a broadcast to every user.
+  if (!result.alreadyCredited) {
+    await notifyUser({
+      userId: result.transaction.userId,
+      type: 'WALLET',
+      title: 'Wallet funded',
+      body: `Your wallet was credited with ${formatNaira(result.transaction.amountKobo)}. New balance: ${formatNaira(result.transaction.balanceAfterKobo)}.`,
+      data: { transactionId: result.transaction.id, reference: result.transaction.reference }
+    });
+  }
+
+  return result.transaction;
 }
 
 /**
  * Credits a wallet for a bank transfer that arrived with NO pre-created pending
- * transaction — i.e. the user transferred directly into their permanent Dedicated
+ * transaction - i.e. the user transferred directly into their permanent Dedicated
  * Virtual Account out-of-band, rather than going through /wallet/fund or
  * /wallet/fund/dynamic. The webhook calls this once it's confirmed (via
  * `verifyTransaction`) that no existing transaction matches the reference.
  *
  * Idempotent: `reference` is Paystack's own transaction reference, which is
- * globally unique, and `Transaction.reference` has a unique constraint — so if
+ * globally unique, and `Transaction.reference` has a unique constraint - so if
  * Paystack redelivers the same webhook, the second insert fails with P2002 and we
  * simply return the transaction the first delivery already created.
  */
@@ -209,7 +230,7 @@ export async function creditDirectDeposit(params: {
   }
 
   try {
-    return await prisma.$transaction(async (tx) => {
+    const transaction = await prisma.$transaction(async (tx) => {
       const before = await tx.user.findUniqueOrThrow({ where: { id: user.id } });
       const after = await tx.user.update({
         where: { id: user.id },
@@ -233,6 +254,18 @@ export async function creditDirectDeposit(params: {
         }
       });
     });
+
+    // Scoped to this one depositor (resolved above by their unique paystackCustomerCode)
+    // - every other user's wallet and notification feed is untouched.
+    await notifyUser({
+      userId: transaction.userId,
+      type: 'WALLET',
+      title: 'Wallet funded',
+      body: `Your wallet was credited with ${formatNaira(transaction.amountKobo)} via bank transfer. New balance: ${formatNaira(transaction.balanceAfterKobo)}.`,
+      data: { transactionId: transaction.id, reference: transaction.reference }
+    });
+
+    return transaction;
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return prisma.transaction.findUniqueOrThrow({ where: { reference: params.reference } });
@@ -250,7 +283,7 @@ export async function creditDirectDeposit(params: {
 export async function redeemCoupon(userId: string, rawCode: string) {
   const code = rawCode.trim().toUpperCase();
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const coupon = await tx.coupon.findUnique({ where: { code } });
     if (!coupon) throw new ApiError(404, 'Invalid coupon code', 'COUPON_NOT_FOUND');
     if (coupon.isRedeemed) throw new ApiError(409, 'This coupon has already been used', 'COUPON_ALREADY_REDEEMED');
@@ -290,6 +323,16 @@ export async function redeemCoupon(userId: string, rawCode: string) {
 
     return { transaction, balanceAfter: koboToNaira(after.walletBalanceKobo) };
   });
+
+  await notifyUser({
+    userId,
+    type: 'WALLET',
+    title: 'Coupon redeemed',
+    body: `${formatNaira(result.transaction.amountKobo)} was added to your wallet from coupon ${code}. New balance: ${formatNaira(result.transaction.balanceAfterKobo)}.`,
+    data: { transactionId: result.transaction.id }
+  });
+
+  return result;
 }
 
 /** Marks a pending funding attempt as failed (payment declined, expired, etc). Idempotent. */
@@ -302,7 +345,7 @@ export async function markFundingFailed(reference: string) {
 
 /**
  * Admin-initiated wallet credit or debit (e.g. compensating a customer, correcting an
- * error). Always creates a MANUAL_ADJUSTMENT transaction record for the audit trail —
+ * error). Always creates a MANUAL_ADJUSTMENT transaction record for the audit trail -
  * this should never be called without a human-readable reason attached.
  */
 export async function manualWalletAdjustment(params: {
@@ -314,7 +357,7 @@ export async function manualWalletAdjustment(params: {
 }) {
   const amountKobo = nairaToKobo(params.amount);
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const before = await tx.user.findUnique({ where: { id: params.userId } });
     if (!before) throw new ApiError(404, 'User not found', 'USER_NOT_FOUND');
 
@@ -352,6 +395,16 @@ export async function manualWalletAdjustment(params: {
 
     return { transaction, balanceAfter: after.walletBalanceKobo };
   });
+
+  await notifyUser({
+    userId: params.userId,
+    type: 'WALLET',
+    title: params.direction === 'credit' ? 'Wallet credited by support' : 'Wallet debited by support',
+    body: `${formatNaira(amountKobo)} was ${params.direction === 'credit' ? 'added to' : 'deducted from'} your wallet: ${params.reason}. New balance: ${formatNaira(result.balanceAfter)}.`,
+    data: { transactionId: result.transaction.id }
+  });
+
+  return result;
 }
 
 /**
@@ -360,24 +413,38 @@ export async function manualWalletAdjustment(params: {
  * (no-ops if it's already REVERSED).
  */
 export async function refundWallet(params: { transactionId: string; userId: string }) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const transaction = await tx.transaction.findFirst({
       where: { id: params.transactionId, userId: params.userId }
     });
     if (!transaction) throw new ApiError(404, 'Transaction not found', 'TRANSACTION_NOT_FOUND');
-    if (transaction.status === TransactionStatus.REVERSED) return transaction;
+    if (transaction.status === TransactionStatus.REVERSED) return { transaction, alreadyReversed: true };
 
     const user = await tx.user.update({
       where: { id: params.userId },
       data: { walletBalanceKobo: { increment: transaction.amountKobo } }
     });
 
-    return tx.transaction.update({
+    const updated = await tx.transaction.update({
       where: { id: transaction.id },
       data: {
         status: TransactionStatus.REVERSED,
         balanceAfterKobo: user.walletBalanceKobo
       }
     });
+
+    return { transaction: updated, alreadyReversed: false };
   });
+
+  if (!result.alreadyReversed) {
+    await notifyUser({
+      userId: params.userId,
+      type: 'WALLET',
+      title: 'Transaction reversed',
+      body: `${formatNaira(result.transaction.amountKobo)} was refunded to your wallet for "${result.transaction.description}". New balance: ${formatNaira(result.transaction.balanceAfterKobo)}.`,
+      data: { transactionId: result.transaction.id }
+    });
+  }
+
+  return result.transaction;
 }

@@ -3,6 +3,7 @@ import { env } from '../config/env.js';
 import { ApiError } from '../middleware/error.js';
 import { prisma } from '../lib/prisma.js';
 import { paystackService } from './paystack.service.js';
+import { notifyUser } from './notification.service.js';
 
 /** Splits "Sunusi Usama" -> { firstName: "Sunusi", lastName: "Usama" }. Paystack requires both separately. */
 function splitFullName(fullName: string) {
@@ -100,6 +101,14 @@ export async function verifyBvnAndActivateWallet(params: {
       }
     });
 
+    await notifyUser({
+      userId,
+      type: 'KYC',
+      title: 'Verification successful',
+      body: `Your identity has been verified. Your funding account is ${dva.account_number} (${dva.bank.name}).`,
+      data: { virtualAccountNumber: dva.account_number }
+    });
+
     return {
       kycStatus: KycStatus.VERIFIED,
       virtualAccountNumber: dva.account_number,
@@ -111,6 +120,15 @@ export async function verifyBvnAndActivateWallet(params: {
       where: { id: userId },
       data: { kycStatus: KycStatus.REJECTED, kycFailureReason: message }
     });
+
+    await notifyUser({
+      userId,
+      type: 'KYC',
+      title: 'Verification failed',
+      body: `We couldn't verify your identity: ${message}. Please review your details and try again.`,
+      data: { reason: message }
+    });
+
     throw error;
   }
 }

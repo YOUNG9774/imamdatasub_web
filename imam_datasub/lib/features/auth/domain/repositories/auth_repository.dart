@@ -2,16 +2,36 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/user_entity.dart';
 
+/// Result of a successful login/register call. Wrapping the user together
+/// with [requiresLoginPinSetup] lets the UI/notifier layer decide whether to
+/// force the mandatory "create your login PIN" screen right after this call,
+/// without a second round trip.
+class AuthLoginResult {
+  const AuthLoginResult({
+    required this.user,
+    this.requiresLoginPinSetup = false,
+  });
+
+  final UserEntity user;
+  final bool requiresLoginPinSetup;
+}
+
 abstract class AuthRepository {
-  /// Login with email/phone + password
-  Future<Either<Failure, UserEntity>> login({
+  /// Login with email/phone + password. [loginPin] must be supplied once the
+  /// account already has a 6-digit login PIN set - the backend rejects the
+  /// request with code LOGIN_PIN_REQUIRED otherwise (this is what forces
+  /// password + PIN together on a new/unrecognized device).
+  Future<Either<Failure, AuthLoginResult>> login({
     required String identifier, // email or phone
     required String password,
+    String? loginPin,
     bool rememberMe = false,
   });
 
-  /// Register a new account
-  Future<Either<Failure, void>> register({
+  /// Register a new account. Returns AuthLoginResult so the caller knows
+  /// whether the mandatory login-PIN setup screen must follow (it always
+  /// will for a brand new account).
+  Future<Either<Failure, AuthLoginResult>> register({
     required String fullName,
     required String email,
     required String phone,
@@ -65,6 +85,19 @@ abstract class AuthRepository {
     required String oldPin,
     required String newPin,
   });
+
+  /// Set the 6-digit login PIN (first time, mandatory right after login)
+  Future<Either<Failure, void>> setLoginPin({required String pin});
+
+  /// Change the existing 6-digit login PIN
+  Future<Either<Failure, void>> changeLoginPin({
+    required String oldPin,
+    required String newPin,
+  });
+
+  /// Verify the login PIN locally (no server round trip) to unlock the app
+  /// on a device that already holds a valid session.
+  Future<Either<Failure, bool>> unlockWithLoginPin({required String pin});
 
   /// Change account password
   Future<Either<Failure, void>> changePassword({

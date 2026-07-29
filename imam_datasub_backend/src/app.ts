@@ -1,4 +1,4 @@
-// MUST be the first import in this file. It monkey-patches Express's Router
+﻿// MUST be the first import in this file. It monkey-patches Express's Router
 // so that a rejected promise inside an `async (req, res) => {...}` handler is
 // automatically forwarded to `next(error)` -> errorHandler, instead of
 // escaping as an unhandled promise rejection at the process level.
@@ -19,6 +19,8 @@ import { errorHandler } from './middleware/error.js';
 import { adminApiRoutes } from './routes/admin-api.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { kycRoutes } from './routes/kyc.routes.js';
+import { notificationRoutes } from './routes/notification.routes.js';
+import { resultRoutes } from './routes/result.routes.js';
 import { transactionRoutes } from './routes/transaction.routes.js';
 import { userRoutes } from './routes/user.routes.js';
 import { vtuRoutes } from './routes/vtu.routes.js';
@@ -49,6 +51,8 @@ export function createApp() {
   app.use('/api/user', userRoutes);
   app.use('/api/wallet', walletRoutes);
   app.use('/api/kyc', kycRoutes);
+  app.use('/api/notifications', notificationRoutes);
+  app.use('/api/result', resultRoutes);
   app.use('/api', vtuRoutes);
   app.use('/api/transactions', transactionRoutes);
 
@@ -71,3 +75,4 @@ export function createApp() {
   app.use(errorHandler);
   return app;
 }
+

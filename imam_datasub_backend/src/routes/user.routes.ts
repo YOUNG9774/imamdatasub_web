@@ -6,6 +6,7 @@ import { koboToNaira } from '../lib/money.js';
 import { requireAuth } from '../middleware/auth.js';
 import { ApiError } from '../middleware/error.js';
 import { setPin, verifyPin } from '../services/wallet.service.js';
+import { setLoginPin, verifyLoginPin } from '../services/login-pin.service.js';
 import { tryProvisionInstantVirtualAccount } from '../services/kyc.service.js';
 
 export const userRoutes = Router();
@@ -132,6 +133,55 @@ userRoutes.post('/pin/change', async (req, res) => {
   await setPin(req.user!.id, body.new_pin);
   res.json({ status: true, message: 'PIN changed successfully' });
 });
+// ── Login PIN (6-digit) ──────────────────────────────────────
+// Distinct from the 4-digit transaction PIN above. Once set, /auth/login
+// requires it for every future login from a device without a live session.
+userRoutes.post('/login-pin/set', async (req, res) => {
+  const body = z.object({ pin: z.string() }).parse(req.body);
+  await setLoginPin(req.user!.id, body.pin);
+  res.json({ status: true, message: 'Login PIN set successfully' });
+});
+
+userRoutes.post('/login-pin/change', async (req, res) => {
+  const body = z
+    .object({
+      old_pin: z.string(),
+      new_pin: z.string()
+    })
+    .parse(req.body);
+
+  // A change attempt with the wrong old PIN counts as a failed attempt too,
+  // same as the transaction PIN's change flow.
+  await verifyLoginPin(req.user!.id, body.old_pin);
+  await setLoginPin(req.user!.id, body.new_pin);
+  res.json({ status: true, message: 'Login PIN changed successfully' });
+});
+
+// ── Password ──────────────────────────────────────────────────
+userRoutes.post('/password/change', async (req, res) => {
+  const body = z
+    .object({
+      old_password: z.string().min(1),
+      new_password: z.string().min(8)
+    })
+    .parse(req.body);
+
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
+  if (!user.passwordHash) {
+    throw new ApiError(400, 'This account has no password set', 'PASSWORD_NOT_SET');
+  }
+
+  const ok = await bcrypt.compare(body.old_password, user.passwordHash);
+  if (!ok) {
+    throw new ApiError(401, 'Current password is incorrect', 'INVALID_PASSWORD');
+  }
+
+  const passwordHash = await bcrypt.hash(body.new_password, 12);
+  await prisma.user.update({ where: { id: req.user!.id }, data: { passwordHash } });
+
+  res.json({ status: true, message: 'Password changed successfully' });
+});
+
 userRoutes.post('/deactivate', async (req, res) => {
   const body = z.object({ credential: z.string().min(1), reason: z.string().trim().max(500).optional() }).parse(req.body);
   await verifyPinOrPassword(req.user!.id, body.credential);

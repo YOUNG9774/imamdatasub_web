@@ -13,7 +13,7 @@ abstract class AuthLocalDataSource {
   Future<bool> hasValidSession();
   Future<void> clearSession();
 
-  // PIN management
+  // Transaction PIN management (4-digit)
   Future<void> savePinLocally(String pin);
   Future<bool> verifyPinLocally(String pin);
   Future<bool> hasPinSet();
@@ -21,6 +21,17 @@ abstract class AuthLocalDataSource {
   Future<void> resetPinAttempts();
   Future<bool> isPinLockedOut();
   Future<int> getRemainingPinAttempts();
+
+  // Login PIN management (6-digit) — unlocks the app locally on a
+  // device that already holds a valid session. Kept entirely separate
+  // from the transaction PIN above.
+  Future<void> saveLoginPinLocally(String pin);
+  Future<bool> verifyLoginPinLocally(String pin);
+  Future<bool> hasLoginPinSet();
+  Future<void> recordFailedLoginPinAttempt();
+  Future<void> resetLoginPinAttempts();
+  Future<bool> isLoginPinLockedOut();
+  Future<int> getRemainingLoginPinAttempts();
 
   // Biometric
   Future<void> setBiometricEnabled(bool enabled);
@@ -82,6 +93,8 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   Future<void> clearSession() async {
     await _secureStorage.clearAuth();
     await _hiveStorage.clearUserData();
+    await _secureStorage.clearLoginPin();
+    await _secureStorage.clearLoginPinLockout();
   }
 
   // ── PIN ──────────────────────────────────────────────────
@@ -146,6 +159,71 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   @override
   Future<int> getRemainingPinAttempts() async {
     final attempts = await _secureStorage.getPinAttempts();
+    return (_maxPinAttempts - attempts).clamp(0, _maxPinAttempts);
+  }
+
+  // ── Login PIN (6-digit) ───────────────────────────────────
+  @override
+  Future<void> saveLoginPinLocally(String pin) async {
+    final salt = AesEncryption.generateSalt();
+    final hash = AesEncryption.hashPin(pin, salt);
+    await _secureStorage.saveLoginPin('$salt:$hash');
+    await resetLoginPinAttempts();
+  }
+
+  @override
+  Future<bool> verifyLoginPinLocally(String pin) async {
+    final stored = await _secureStorage.getLoginPin();
+    if (stored == null || !stored.contains(':')) return false;
+
+    final parts = stored.split(':');
+    final salt = parts[0];
+    final hash = parts[1];
+
+    final isValid = AesEncryption.verifyPin(pin, hash, salt);
+
+    if (isValid) {
+      await resetLoginPinAttempts();
+    } else {
+      await recordFailedLoginPinAttempt();
+    }
+
+    return isValid;
+  }
+
+  @override
+  Future<bool> hasLoginPinSet() => _secureStorage.hasLoginPin();
+
+  @override
+  Future<void> recordFailedLoginPinAttempt() async {
+    final attempts = await _secureStorage.getLoginPinAttempts();
+    final newAttempts = attempts + 1;
+    await _secureStorage.saveLoginPinAttempts(newAttempts);
+
+    if (newAttempts >= _maxPinAttempts) {
+      await _secureStorage.saveLoginPinLockoutUntil(
+        DateTime.now().add(_pinLockoutDuration),
+      );
+    }
+  }
+
+  @override
+  Future<void> resetLoginPinAttempts() => _secureStorage.clearLoginPinLockout();
+
+  @override
+  Future<bool> isLoginPinLockedOut() async {
+    final lockoutUntil = await _secureStorage.getLoginPinLockoutUntil();
+    if (lockoutUntil == null) return false;
+    if (DateTime.now().isAfter(lockoutUntil)) {
+      await resetLoginPinAttempts();
+      return false;
+    }
+    return true;
+  }
+
+  @override
+  Future<int> getRemainingLoginPinAttempts() async {
+    final attempts = await _secureStorage.getLoginPinAttempts();
     return (_maxPinAttempts - attempts).clamp(0, _maxPinAttempts);
   }
 
