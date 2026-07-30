@@ -1,4 +1,4 @@
-﻿CREATE TABLE IF NOT EXISTS "ServicePricing" (
+CREATE TABLE IF NOT EXISTS "ServicePricing" (
   "id" TEXT NOT NULL,
   "service" TEXT NOT NULL,
   "provider" TEXT NOT NULL DEFAULT 'alrahuz',
@@ -22,4 +22,3 @@ VALUES
   ('svc_neco_pin', 'NECO_PIN', 'alrahuz', 'NECO Result Checker Token', 215000, NULL, true, CURRENT_TIMESTAMP),
   ('svc_nabteb_pin', 'NABTEB_PIN', 'alrahuz', 'NABTEB Result Checker PIN', 90000, NULL, true, CURRENT_TIMESTAMP)
 ON CONFLICT ("service") DO NOTHING;
-
