@@ -7,7 +7,7 @@ import '../../../../core/di/injection.dart';
 import '../../../home/presentation/providers/home_provider.dart'
     show unreadNotificationCountProvider;
 
-// â”€â”€ Notification prefs (persisted via Hive) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Notification prefs persisted via Hive
 final pushNotificationsEnabledProvider = StateProvider<bool>((ref) {
   final hive = ref.read(hiveStorageProvider);
   return hive.getSetting<bool>('notif_push', defaultValue: true) ?? true;
@@ -18,7 +18,7 @@ final promoNotificationsEnabledProvider = StateProvider<bool>((ref) {
   return hive.getSetting<bool>('notif_promo', defaultValue: true) ?? true;
 });
 
-// â”€â”€ In-app notification entity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// In-app notification entity
 class AppNotification {
   const AppNotification({
     required this.id,
@@ -42,10 +42,15 @@ class AppNotification {
       title: json['title']?.toString() ?? '',
       body: json['body']?.toString() ?? json['message']?.toString() ?? '',
       date:
-          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.tryParse(
+            (json['created_at'] ?? json['createdAt'] ?? '').toString(),
+          ) ??
           DateTime.now(),
       type: json['type']?.toString(),
-      isRead: json['is_read'] == true || json['read'] == true,
+      isRead:
+          json['is_read'] == true ||
+          json['isRead'] == true ||
+          json['read'] == true,
     );
   }
 
@@ -61,7 +66,7 @@ class AppNotification {
   }
 }
 
-// â”€â”€ Notification remote source â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Notification remote source
 final _notifRemoteProvider = Provider((ref) {
   return _NotifRemote(ref.read(dioClientProvider));
 });
@@ -73,9 +78,20 @@ class _NotifRemote {
   Future<List<AppNotification>> getNotifications() async {
     try {
       final response = await _dio.get(AppEndpoints.notifications);
-      final list = (response.data['data'] ?? response.data) as List<dynamic>;
+      final payload = response.data;
+      final data = payload is Map<String, dynamic> ? payload['data'] : payload;
+      final List<dynamic> list;
+      if (data is List) {
+        list = data;
+      } else if (data is Map<String, dynamic>) {
+        final nested = data['notifications'] ?? data['items'];
+        list = nested is List ? nested : const <dynamic>[];
+      } else {
+        list = const <dynamic>[];
+      }
       return list
-          .map((e) => AppNotification.fromJson(e as Map<String, dynamic>))
+          .whereType<Map<String, dynamic>>()
+          .map(AppNotification.fromJson)
           .toList();
     } catch (_) {
       return [];
@@ -120,7 +136,7 @@ Future<void> unregisterDeviceForLogout(Ref ref) async {
   await remote.unregisterFcmToken(token);
 }
 
-// â”€â”€ FCM service â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// FCM service
 class FcmService {
   FcmService(this._ref);
   final Ref _ref;
@@ -207,7 +223,7 @@ class FcmService {
 
 final fcmServiceProvider = Provider<FcmService>((ref) => FcmService(ref));
 
-// â”€â”€ Notifications list provider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Notifications list provider
 class NotificationsNotifier
     extends StateNotifier<AsyncValue<List<AppNotification>>> {
   NotificationsNotifier(this._ref) : super(const AsyncValue.loading()) {

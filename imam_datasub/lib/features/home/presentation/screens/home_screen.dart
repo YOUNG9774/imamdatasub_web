@@ -30,10 +30,15 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final Set<String> _shownWelcomeNoticeIds = <String>{};
+  bool _shownSessionWelcome = false;
 
-  void _maybeShowWelcomeNotice(List<AppNotification>? notifications) {
-    if (notifications == null || notifications.isEmpty) return;
+  void _maybeShowWelcomeNotice(
+    AsyncValue<List<AppNotification>> notificationsAsync,
+  ) {
+    if (notificationsAsync.isLoading) return;
 
+    final notifications =
+        notificationsAsync.valueOrNull ?? const <AppNotification>[];
     final notice = notifications.cast<AppNotification?>().firstWhere((item) {
       if (item == null ||
           item.isRead ||
@@ -44,8 +49,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return type == 'admin_broadcast' || type == 'promo' || type == 'system';
     }, orElse: () => null);
 
-    if (notice == null) return;
-    _shownWelcomeNoticeIds.add(notice.id);
+    final title = notice?.title.isNotEmpty == true
+        ? notice!.title
+        : 'Welcome to IMAM DATASUB';
+    final body = notice?.body.isNotEmpty == true
+        ? notice!.body
+        : 'Buy data, airtime, TV subscriptions, electricity tokens, education PINs and wallet services securely from your dashboard.';
+
+    if (notice != null) {
+      _shownWelcomeNoticeIds.add(notice.id);
+    } else {
+      if (_shownSessionWelcome) return;
+      _shownSessionWelcome = true;
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
@@ -60,14 +76,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
           contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
           actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          title: Text(
-            notice.title.isNotEmpty ? notice.title : 'Important update',
-          ),
+          title: Text(title),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 420),
             child: SingleChildScrollView(
               child: Text(
-                notice.body,
+                body,
                 style: Theme.of(
                   dialogContext,
                 ).textTheme.bodyMedium?.copyWith(height: 1.45),
@@ -86,7 +100,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
       );
-      if (!mounted) return;
+      if (!mounted || notice == null) return;
       await ref.read(notificationsProvider.notifier).markRead([notice.id]);
     });
   }
@@ -108,7 +122,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final bannersAsync = ref.watch(bannersProvider);
     final recentTxAsync = ref.watch(recentTransactionsProvider);
     final unreadCount = ref.watch(unreadNotificationCountProvider);
-    _maybeShowWelcomeNotice(ref.watch(notificationsProvider).valueOrNull);
+    final notificationsAsync = ref.watch(notificationsProvider);
+    _maybeShowWelcomeNotice(notificationsAsync);
 
     return Scaffold(
       body: SafeArea(
