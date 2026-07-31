@@ -17,7 +17,7 @@ AdminJS.registerAdapter({ Database, Resource });
 
 export const ADMIN_ROOT_PATH = '/admin';
 
-export function buildAdminRouter() {
+export async function buildAdminRouter() {
   const admin = new AdminJS({
     rootPath: ADMIN_ROOT_PATH,
     componentLoader,
@@ -37,10 +37,22 @@ export function buildAdminRouter() {
     ]
   });
 
-  // Live-rebuilds the frontend bundle on file changes during local development.
-  // In production the bundle should be built ahead of time (see README notes).
   if (env.NODE_ENV !== 'production') {
+    // Live-rebuilds the frontend bundle on file changes during local development.
     void admin.watch();
+  } else {
+    // AdminJSExpress.buildAuthenticatedRouter() below also calls admin.initialize()
+    // internally, but WITHOUT awaiting it (fire-and-forget) - so the router it
+    // returns can start serving requests before the bundle has finished writing
+    // to disk. On a fresh deploy that raced against a stale/partial .adminjs/bundle.js
+    // (or a corrupt in-progress write), which is what produced "Unexpected token"
+    // in the browser: the first request(s) got served whatever was on disk at
+    // that instant, not the freshly-built bundle. Awaiting it here ourselves,
+    // before this function's promise resolves, guarantees a complete, valid
+    // bundle exists before app.ts starts routing any request to this router.
+    console.log('[admin] Building AdminJS frontend bundle...');
+    await admin.initialize();
+    console.log('[admin] AdminJS frontend bundle ready');
   }
 
   const router = AdminJSExpress.buildAuthenticatedRouter(

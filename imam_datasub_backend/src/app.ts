@@ -57,13 +57,25 @@ export function createApp() {
   app.use('/api/transactions', transactionRoutes);
 
   let adminRouterPromise: Promise<express.Router> | null = null;
+  const getAdminRouter = () => {
+    adminRouterPromise ??= import('./admin/setup.js').then(async ({ buildAdminRouter }) => {
+      console.log('[admin] Building AdminJS router');
+      const { router } = await buildAdminRouter();
+      return router;
+    });
+    return adminRouterPromise;
+  };
+  // Kick this off now, at server startup, instead of waiting for the first
+  // person to visit /admin. admin.initialize() (the actual bundle build) can
+  // take a few seconds - starting it here gives it a head start so a real
+  // visitor is far less likely to land in the middle of it. Every request
+  // still awaits the same promise below, so correctness doesn't depend on
+  // this head start - it's purely to reduce how often anyone notices the wait.
+  void getAdminRouter();
+
   app.use(ADMIN_ROOT_PATH, async (req, res, next) => {
     try {
-      adminRouterPromise ??= import('./admin/setup.js').then(({ buildAdminRouter }) => {
-        console.log('[admin] Building AdminJS router');
-        return buildAdminRouter().router;
-      });
-      const adminRouter = await adminRouterPromise;
+      const adminRouter = await getAdminRouter();
       return adminRouter(req, res, next);
     } catch (error) {
       console.error('[admin] Failed to build AdminJS router', error);

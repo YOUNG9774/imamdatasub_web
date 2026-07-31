@@ -156,12 +156,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
         // A valid session on this device: gate on the local login PIN
         // (no server call - see AuthRepository.unlockWithLoginPin) rather
         // than dropping straight into the app.
+        // A device that's never cached a local login PIN must be forced
+        // through setup - whether that's a brand new device (fresh install,
+        // valid session but this device never captured a PIN) or an
+        // existing session from before this feature existed at all. Previously
+        // this fell through to `authenticated` here, which is exactly why
+        // already-logged-in users never saw the PIN screen: they have a
+        // valid session but (correctly) no local PIN yet, and this used to
+        // let that combination straight through instead of forcing setup.
         final hasLocalPin =
             await _ref.read(authLocalDataSourceProvider).hasLoginPinSet();
         state = state.copyWith(
           user: user,
-          status:
-              hasLocalPin ? AuthStatus.pinLockRequired : AuthStatus.authenticated,
+          status: hasLocalPin
+              ? AuthStatus.pinLockRequired
+              : AuthStatus.pinSetupRequired,
           isLoading: false,
         );
       },
