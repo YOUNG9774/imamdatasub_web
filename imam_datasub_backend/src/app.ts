@@ -1,4 +1,4 @@
-﻿// MUST be the first import in this file. It monkey-patches Express's Router
+// MUST be the first import in this file. It monkey-patches Express's Router
 // so that a rejected promise inside an `async (req, res) => {...}` handler is
 // automatically forwarded to `next(error)` -> errorHandler, instead of
 // escaping as an unhandled promise rejection at the process level.
@@ -17,8 +17,10 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middleware/error.js';
 import { adminApiRoutes } from './routes/admin-api.routes.js';
+import { adminPanelRoutes } from './routes/admin-panel.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { kycRoutes } from './routes/kyc.routes.js';
+import { legalRoutes } from './routes/legal.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
 import { resultRoutes } from './routes/result.routes.js';
 import { transactionRoutes } from './routes/transaction.routes.js';
@@ -27,7 +29,6 @@ import { vtuRoutes } from './routes/vtu.routes.js';
 import { walletRoutes } from './routes/wallet.routes.js';
 import { webhookRoutes } from './routes/webhook.routes.js';
 
-const ADMIN_ROOT_PATH = '/admin';
 
 export function createApp() {
   const app = express();
@@ -35,6 +36,8 @@ export function createApp() {
   app.get('/health', (_req, res) => {
     res.json({ status: true, service: 'imam-datasub-backend' });
   });
+
+  app.use('/', legalRoutes);
 
   app.use(helmet());
   app.use(cors());
@@ -56,33 +59,7 @@ export function createApp() {
   app.use('/api', vtuRoutes);
   app.use('/api/transactions', transactionRoutes);
 
-  let adminRouterPromise: Promise<express.Router> | null = null;
-  const getAdminRouter = () => {
-    adminRouterPromise ??= import('./admin/setup.js').then(async ({ buildAdminRouter }) => {
-      console.log('[admin] Building AdminJS router');
-      const { router } = await buildAdminRouter();
-      return router;
-    });
-    return adminRouterPromise;
-  };
-  // Kick this off now, at server startup, instead of waiting for the first
-  // person to visit /admin. admin.initialize() (the actual bundle build) can
-  // take a few seconds - starting it here gives it a head start so a real
-  // visitor is far less likely to land in the middle of it. Every request
-  // still awaits the same promise below, so correctness doesn't depend on
-  // this head start - it's purely to reduce how often anyone notices the wait.
-  void getAdminRouter();
-
-  app.use(ADMIN_ROOT_PATH, async (req, res, next) => {
-    try {
-      const adminRouter = await getAdminRouter();
-      return adminRouter(req, res, next);
-    } catch (error) {
-      console.error('[admin] Failed to build AdminJS router', error);
-      adminRouterPromise = null;
-      return next(error);
-    }
-  });
+  app.use('/admin', adminPanelRoutes);
 
   app.use(errorHandler);
   return app;

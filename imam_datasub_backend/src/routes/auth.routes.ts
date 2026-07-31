@@ -12,7 +12,15 @@ import { tryProvisionInstantVirtualAccount } from '../services/kyc.service.js';
 
 export const authRoutes = Router();
 
-function publicUser(user: Awaited<ReturnType<typeof prisma.user.findUniqueOrThrow>>) {
+async function publicUser(user: Awaited<ReturnType<typeof prisma.user.findUniqueOrThrow>>) {
+  const admin = await prisma.adminUser.findFirst({
+    where: {
+      email: { equals: user.email, mode: 'insensitive' },
+      isActive: true
+    },
+    select: { role: true }
+  });
+
   return {
     id: user.id,
     full_name: user.fullName,
@@ -27,6 +35,8 @@ function publicUser(user: Awaited<ReturnType<typeof prisma.user.findUniqueOrThro
     phone_verified: user.phoneVerified,
     virtual_account_number: user.virtualAccountNumber,
     virtual_account_bank: user.virtualAccountBank,
+    is_admin: !!admin,
+    admin_role: admin?.role ?? null,
     created_at: user.createdAt.toISOString()
   };
 }
@@ -43,7 +53,7 @@ async function authResponse(
       expires_in: tokens.expiresIn,
       requires_pin_setup: !user.pinHash,
       requires_login_pin_setup: !user.loginPinHash,
-      user: publicUser(user)
+      user: await publicUser(user)
     }
   };
 }
@@ -165,7 +175,7 @@ authRoutes.get('/me', requireAuth, async (req, res) => {
     data: {
       requires_pin_setup: !user.pinHash,
       requires_login_pin_setup: !user.loginPinHash,
-      user: publicUser(user)
+      user: await publicUser(user)
     }
   });
 });

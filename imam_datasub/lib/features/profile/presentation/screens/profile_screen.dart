@@ -26,6 +26,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final admin = ref.watch(adminMeProvider).valueOrNull;
+    final hasAdminAccess = user?.isAdmin == true || admin != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -65,13 +66,13 @@ class ProfileScreen extends ConsumerWidget {
                     _ProfileTile(
                       icon: Icons.price_change_outlined,
                       title: 'Pricing',
-                      subtitle: admin == null
-                          ? 'View available data plans'
-                          : 'Manage data selling prices',
+                      subtitle: hasAdminAccess
+                          ? 'Manage data selling prices'
+                          : 'View available data plans',
                       onTap: () => context.push(
-                        admin == null
-                            ? RouteNames.buyData
-                            : RouteNames.adminDataPricing,
+                        hasAdminAccess
+                            ? RouteNames.adminDataPricing
+                            : RouteNames.buyData,
                       ),
                     ),
                     const Divider(height: 1, indent: 72),
@@ -173,7 +174,8 @@ class ProfileScreen extends ConsumerWidget {
                       iconColor: AppColors.error500,
                       title: 'Deactivate / Delete Account',
                       titleColor: AppColors.error500,
-                      subtitle: 'Temporarily pause or permanently close your account',
+                      subtitle:
+                          'Temporarily pause or permanently close your account',
                       onTap: () => _showAccountClosureSheet(context, ref),
                     ),
                   ],
@@ -297,9 +299,9 @@ class ProfileScreen extends ConsumerWidget {
           children: [
             Text(
               'Manage your account',
-              style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: Theme.of(
+                sheetContext,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 20),
             ListTile(
@@ -314,11 +316,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
               onTap: () {
                 Navigator.of(sheetContext).pop();
-                _confirmAccountAction(
-                  context,
-                  ref,
-                  isDelete: false,
-                );
+                _confirmAccountAction(context, ref, isDelete: false);
               },
             ),
             const Divider(height: 24),
@@ -340,11 +338,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
               onTap: () {
                 Navigator.of(sheetContext).pop();
-                _confirmAccountAction(
-                  context,
-                  ref,
-                  isDelete: true,
-                );
+                _confirmAccountAction(context, ref, isDelete: true);
               },
             ),
           ],
@@ -402,23 +396,29 @@ class ProfileScreen extends ConsumerWidget {
 
     try {
       if (isDelete) {
-        await ref.read(dioClientProvider).delete<Map<String, dynamic>>(
-          AppEndpoints.deleteAccount,
-          data: {'credential': credential},
-        );
+        await ref
+            .read(dioClientProvider)
+            .delete<Map<String, dynamic>>(
+              AppEndpoints.deleteAccount,
+              data: {'credential': credential},
+            );
         await ref.read(authNotifierProvider.notifier).logout();
         if (context.mounted) {
           context.showSnackBar('Account deleted successfully');
           context.go(RouteNames.login);
         }
       } else {
-        await ref.read(dioClientProvider).post<Map<String, dynamic>>(
-          AppEndpoints.deactivateAccount,
-          data: {'credential': credential},
-        );
+        await ref
+            .read(dioClientProvider)
+            .post<Map<String, dynamic>>(
+              AppEndpoints.deactivateAccount,
+              data: {'credential': credential},
+            );
         await ref.read(authNotifierProvider.notifier).logout();
         if (context.mounted) {
-          context.showSnackBar('Account deactivated. Contact support to reactivate any time.');
+          context.showSnackBar(
+            'Account deactivated. Contact support to reactivate any time.',
+          );
           context.go(RouteNames.login);
         }
       }
@@ -431,7 +431,10 @@ class ProfileScreen extends ConsumerWidget {
       }
     } catch (_) {
       if (context.mounted) {
-        context.showSnackBar('Something went wrong. Please try again.', isError: true);
+        context.showSnackBar(
+          'Something went wrong. Please try again.',
+          isError: true,
+        );
       }
     }
   }
@@ -647,9 +650,9 @@ class _CredentialConfirmSheetState extends State<_CredentialConfirmSheet> {
           Text(
             widget.isDelete ? 'Confirm deletion' : 'Confirm deactivation',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
           Text(
@@ -693,7 +696,9 @@ class _CredentialConfirmSheetState extends State<_CredentialConfirmSheet> {
           TextButton(
             onPressed: () => setState(() => _usePassword = !_usePassword),
             child: Text(
-              _usePassword ? 'Use transaction PIN instead' : "Haven't set a PIN? Use password instead",
+              _usePassword
+                  ? 'Use transaction PIN instead'
+                  : "Haven't set a PIN? Use password instead",
             ),
           ),
           if (_usePassword)

@@ -18,6 +18,8 @@ class UserEntity extends Equatable {
     this.createdAt,
     this.virtualAccountNumber,
     this.virtualAccountBank,
+    this.isAdmin = false,
+    this.adminRole,
   });
 
   final String id;
@@ -34,6 +36,8 @@ class UserEntity extends Equatable {
   final DateTime? createdAt;
   final String? virtualAccountNumber;
   final String? virtualAccountBank;
+  final bool isAdmin;
+  final String? adminRole;
 
   String get firstName => fullName.split(' ').first;
 
@@ -59,6 +63,8 @@ class UserEntity extends Equatable {
     DateTime? createdAt,
     String? virtualAccountNumber,
     String? virtualAccountBank,
+    bool? isAdmin,
+    String? adminRole,
   }) {
     return UserEntity(
       id: id ?? this.id,
@@ -75,34 +81,33 @@ class UserEntity extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       virtualAccountNumber: virtualAccountNumber ?? this.virtualAccountNumber,
       virtualAccountBank: virtualAccountBank ?? this.virtualAccountBank,
+      isAdmin: isAdmin ?? this.isAdmin,
+      adminRole: adminRole ?? this.adminRole,
     );
   }
 
-  static const empty = UserEntity(
-    id: '',
-    fullName: '',
-    email: '',
-    phone: '',
-  );
+  static const empty = UserEntity(id: '', fullName: '', email: '', phone: '');
 
   bool get isEmpty => this == UserEntity.empty;
   bool get isNotEmpty => this != UserEntity.empty;
 
   @override
   List<Object?> get props => [
-        id,
-        fullName,
-        email,
-        phone,
-        photoUrl,
-        walletBalance,
-        referralCode,
-        referralEarnings,
-        kycStatus,
-        isEmailVerified,
-        isPhoneVerified,
-        createdAt,
-        virtualAccountNumber,
-        virtualAccountBank,
-      ];
+    id,
+    fullName,
+    email,
+    phone,
+    photoUrl,
+    walletBalance,
+    referralCode,
+    referralEarnings,
+    kycStatus,
+    isEmailVerified,
+    isPhoneVerified,
+    createdAt,
+    virtualAccountNumber,
+    virtualAccountBank,
+    isAdmin,
+    adminRole,
+  ];
 }
