@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
@@ -47,6 +48,12 @@ class LegalDocumentScreen extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
+            const SizedBox(height: 20),
+            _ReadMoreLink(
+              url: type == LegalDocumentType.privacy
+                  ? AppConfig.privacyPolicyUrl
+                  : AppConfig.termsUrl,
+            ),
             const SizedBox(height: 32),
           ],
         ),
@@ -56,6 +63,45 @@ class LegalDocumentScreen extends StatelessWidget {
 }
 
 enum LegalDocumentType { privacy, terms }
+
+class _ReadMoreLink extends StatelessWidget {
+  const _ReadMoreLink({required this.url});
+  final String url;
+
+  Future<void> _open(BuildContext context) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      context.showSnackBar('Could not open the web page', isError: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => _open(context),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Read the full version online',
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: AppColors.primary600,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.arrow_forward, size: 16, color: AppColors.primary600),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _LegalSection extends StatelessWidget {
   const _LegalSection({required this.section});

@@ -35,7 +35,7 @@ class AppConfig {
       case 'staging':
         return 'https://staging.imamdatasub.ng/api';
       default:
-        return 'https://imamdatasub.ng/api';
+        return 'https://imamdatasubweb-production-4f62.up.railway.app/api';
     }
   }
 
@@ -83,8 +83,9 @@ class AppConfig {
   static const String supportWhatsApp = '+2348035679448';
   static const String supportEmail = 'abdulmhassan02@gmai.com';
   static const String privacyPolicyUrl =
-      'https://imamdatasub.ng/privacy-policy';
-  static const String termsUrl = 'https://imamdatasub.ng/terms';
+      'https://imamdatasubweb-production-4f62.up.railway.app/privacy-policy';
+  static const String termsUrl =
+      'https://imamdatasubweb-production-4f62.up.railway.app/terms';
 
   // ── Play Integrity ────────────────────────────────────────
   static const String playIntegrityCloudProjectNumber = '123456789';

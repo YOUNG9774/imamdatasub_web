@@ -7,9 +7,10 @@
         </trust-anchors>
     </base-config>
 
-    <!-- Production API domain with certificate pinning -->
+    <!-- This app's own backend API (Railway). This is the domain baseUrl in
+         app_config.dart actually talks to for auth, wallet, transactions, etc. -->
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">alrahuzdata.com.ng</domain>
+        <domain includeSubdomains="true">imamdatasubweb-production-4f62.up.railway.app</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
@@ -20,6 +21,17 @@
             <pin digest="SHA-256">REPLACE_WITH_BACKUP_BASE64_PIN=</pin>
         </pin-set>
         -->
+    </domain-config>
+
+    <!-- Alrahuz Data: a third-party VTU/data provider the BACKEND calls server-side
+         (see ALRAHUZ_BASE_URL in imam_datasub_backend/src/config/env.ts). The
+         Flutter app itself never talks to this domain directly - it's listed
+         here only in case any WebView/deep-link ever needs to reach it. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">alrahuzdata.com.ng</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
     </domain-config>
 
     <!-- Firebase domains -->

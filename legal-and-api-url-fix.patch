@@ -1,0 +1,371 @@
+diff --git a/imam_datasub/android/app/src/main/res/xml/network_security_config.xml b/imam_datasub/android/app/src/main/res/xml/network_security_config.xml
+index d9901c2..1ec0f07 100644
+--- a/imam_datasub/android/app/src/main/res/xml/network_security_config.xml
++++ b/imam_datasub/android/app/src/main/res/xml/network_security_config.xml
+@@ -7,9 +7,10 @@
+         </trust-anchors>
+     </base-config>
+ 
+-    <!-- Production API domain with certificate pinning -->
++    <!-- This app's own backend API (Railway). This is the domain baseUrl in
++         app_config.dart actually talks to for auth, wallet, transactions, etc. -->
+     <domain-config cleartextTrafficPermitted="false">
+-        <domain includeSubdomains="true">alrahuzdata.com.ng</domain>
++        <domain includeSubdomains="true">imamdatasubweb-production-4f62.up.railway.app</domain>
+         <trust-anchors>
+             <certificates src="system" />
+         </trust-anchors>
+@@ -22,6 +23,17 @@
+         -->
+     </domain-config>
+ 
++    <!-- Alrahuz Data: a third-party VTU/data provider the BACKEND calls server-side
++         (see ALRAHUZ_BASE_URL in imam_datasub_backend/src/config/env.ts). The
++         Flutter app itself never talks to this domain directly - it's listed
++         here only in case any WebView/deep-link ever needs to reach it. -->
++    <domain-config cleartextTrafficPermitted="false">
++        <domain includeSubdomains="true">alrahuzdata.com.ng</domain>
++        <trust-anchors>
++            <certificates src="system" />
++        </trust-anchors>
++    </domain-config>
++
+     <!-- Firebase domains -->
+     <domain-config cleartextTrafficPermitted="false">
+         <domain includeSubdomains="true">firebaseapp.com</domain>
+diff --git a/imam_datasub/lib/core/config/app_config.dart b/imam_datasub/lib/core/config/app_config.dart
+index 5cc293f..7b62a2f 100644
+--- a/imam_datasub/lib/core/config/app_config.dart
++++ b/imam_datasub/lib/core/config/app_config.dart
+@@ -35,7 +35,7 @@ class AppConfig {
+       case 'staging':
+         return 'https://staging.imamdatasub.ng/api';
+       default:
+-        return 'https://imamdatasub.ng/api';
++        return 'https://imamdatasubweb-production-4f62.up.railway.app/api';
+     }
+   }
+ 
+@@ -83,8 +83,9 @@ class AppConfig {
+   static const String supportWhatsApp = '+2348035679448';
+   static const String supportEmail = 'abdulmhassan02@gmai.com';
+   static const String privacyPolicyUrl =
+-      'https://imamdatasub.ng/privacy-policy';
+-  static const String termsUrl = 'https://imamdatasub.ng/terms';
++      'https://imamdatasubweb-production-4f62.up.railway.app/privacy-policy';
++  static const String termsUrl =
++      'https://imamdatasubweb-production-4f62.up.railway.app/terms';
+ 
+   // ── Play Integrity ────────────────────────────────────────
+   static const String playIntegrityCloudProjectNumber = '123456789';
+diff --git a/imam_datasub/lib/features/legal/presentation/screens/legal_document_screen.dart b/imam_datasub/lib/features/legal/presentation/screens/legal_document_screen.dart
+index 9f8d960..a150253 100644
+--- a/imam_datasub/lib/features/legal/presentation/screens/legal_document_screen.dart
++++ b/imam_datasub/lib/features/legal/presentation/screens/legal_document_screen.dart
+@@ -1,4 +1,5 @@
+ import 'package:flutter/material.dart';
++import 'package:url_launcher/url_launcher.dart';
+ import '../../../../core/config/app_config.dart';
+ import '../../../../core/constants/app_colors.dart';
+ import '../../../../core/constants/app_dimensions.dart';
+@@ -47,6 +48,12 @@ class LegalDocumentScreen extends StatelessWidget {
+                 fontWeight: FontWeight.w700,
+               ),
+             ),
++            const SizedBox(height: 20),
++            _ReadMoreLink(
++              url: type == LegalDocumentType.privacy
++                  ? AppConfig.privacyPolicyUrl
++                  : AppConfig.termsUrl,
++            ),
+             const SizedBox(height: 32),
+           ],
+         ),
+@@ -57,6 +64,45 @@ class LegalDocumentScreen extends StatelessWidget {
+ 
+ enum LegalDocumentType { privacy, terms }
+ 
++class _ReadMoreLink extends StatelessWidget {
++  const _ReadMoreLink({required this.url});
++  final String url;
++
++  Future<void> _open(BuildContext context) async {
++    final uri = Uri.parse(url);
++    if (await canLaunchUrl(uri)) {
++      await launchUrl(uri, mode: LaunchMode.externalApplication);
++    } else if (context.mounted) {
++      context.showSnackBar('Could not open the web page', isError: true);
++    }
++  }
++
++  @override
++  Widget build(BuildContext context) {
++    return InkWell(
++      onTap: () => _open(context),
++      borderRadius: BorderRadius.circular(8),
++      child: Padding(
++        padding: const EdgeInsets.symmetric(vertical: 6),
++        child: Row(
++          mainAxisSize: MainAxisSize.min,
++          children: [
++            Text(
++              'Read the full version online',
++              style: context.textTheme.bodyMedium?.copyWith(
++                color: AppColors.primary600,
++                fontWeight: FontWeight.w700,
++              ),
++            ),
++            const SizedBox(width: 4),
++            Icon(Icons.arrow_forward, size: 16, color: AppColors.primary600),
++          ],
++        ),
++      ),
++    );
++  }
++}
++
+ class _LegalSection extends StatelessWidget {
+   const _LegalSection({required this.section});
+   final ({String title, String body}) section;
+diff --git a/imam_datasub_backend/src/app.ts b/imam_datasub_backend/src/app.ts
+index 928779d..a1996c0 100644
+--- a/imam_datasub_backend/src/app.ts
++++ b/imam_datasub_backend/src/app.ts
+@@ -19,6 +19,7 @@ import { errorHandler } from './middleware/error.js';
+ import { adminApiRoutes } from './routes/admin-api.routes.js';
+ import { authRoutes } from './routes/auth.routes.js';
+ import { kycRoutes } from './routes/kyc.routes.js';
++import { legalRoutes } from './routes/legal.routes.js';
+ import { notificationRoutes } from './routes/notification.routes.js';
+ import { resultRoutes } from './routes/result.routes.js';
+ import { transactionRoutes } from './routes/transaction.routes.js';
+@@ -60,6 +61,14 @@ export function createApp() {
+     return helmet()(req, res, next);
+   });
+   app.use(cors());
++
++  // Public web pages (no auth, no rate limit) - these are what Play Store's
++  // Data Safety / Privacy Policy fields, and the in-app "Read more" links,
++  // point at. Mounted after helmet/cors (so they still get proper security
++  // headers) but before the rate limiter below, so a burst of App/Play Store
++  // reviewers or crawlers hitting these plain HTML pages can never get 429'd.
++  app.use(legalRoutes);
++
+   app.use(rateLimit({ windowMs: 60_000, limit: 120 }));
+ 
+   // Mounted with a raw body parser, and BEFORE express.json() below, because Paystack's
+diff --git a/imam_datasub_backend/src/lib/legal-content.ts b/imam_datasub_backend/src/lib/legal-content.ts
+new file mode 100644
+index 0000000..e3c3acc
+--- /dev/null
++++ b/imam_datasub_backend/src/lib/legal-content.ts
+@@ -0,0 +1,75 @@
++export interface LegalSection {
++  title: string;
++  body: string;
++}
++
++// Mirrors imam_datasub/lib/features/legal/presentation/screens/legal_document_screen.dart
++// exactly. If you update the wording in one place, update it in the other — Play Store
++// review and basic legal hygiene both expect the public page and in-app copy to match.
++export const EFFECTIVE_DATE = '27 July 2026';
++
++export const PRIVACY_SECTIONS: LegalSection[] = [
++  {
++    title: '1. Information we collect',
++    body: 'IMAM DATASUB collects account information such as name, phone number, email address, login details, device information, wallet activity, transaction records, beneficiaries, KYC details where required, support messages, and payment references needed to provide VTU, bill payment, wallet, referral, notification and support services.'
++  },
++  {
++    title: '2. How we use information',
++    body: 'We use your information to create and secure your account, process wallet funding, data, airtime, cable, electricity and other purchases, verify payments, prevent fraud, provide customer support, send transaction notifications, maintain records, improve the app, comply with legal obligations and protect users from unauthorized access.'
++  },
++  {
++    title: '3. Payments and third parties',
++    body: 'Wallet funding and some verification services may be processed through payment and service providers such as Paystack, Supabase, Firebase and VTU provider APIs including Alrahuz Data. We share only the information needed to complete the requested service, verify transactions, create virtual accounts, send notifications or maintain platform security.'
++  },
++  {
++    title: '4. KYC and security',
++    body: 'Where KYC is required, we may collect BVN/NIN-related verification details, bank details and identity information. Sensitive data is used only for verification, compliance, wallet protection and fraud prevention. We apply access controls, encrypted storage where available and secure transport for API communication.'
++  },
++  {
++    title: '5. Data retention',
++    body: 'We retain account and transaction records for as long as needed to provide services, resolve complaints, meet accounting obligations, investigate fraud, comply with law and maintain audit trails. If you request account deletion, we disable account access and anonymize personal identifiers where lawful while retaining financial records that must be preserved.'
++  },
++  {
++    title: '6. Your choices',
++    body: 'You may update your profile, change your password or transaction PIN, enable or disable biometric login on your device, contact support about inaccurate data, and request account deactivation or deletion from the app. Some transaction records cannot be removed where retention is legally or operationally required.'
++  },
++  {
++    title: '7. Contact',
++    body: 'For privacy requests, complaints or support, contact IMAM DATASUB through the support email or WhatsApp numbers shown below.'
++  }
++];
++
++export const TERMS_SECTIONS: LegalSection[] = [
++  {
++    title: '1. Acceptance of terms',
++    body: 'By creating an account or using IMAM DATASUB, you agree to these Terms & Conditions. If you do not agree, do not use the application or services.'
++  },
++  {
++    title: '2. Services',
++    body: 'IMAM DATASUB provides wallet-based VTU and bill payment services, including data, airtime, cable TV, electricity, result checker, recharge/data cards, referrals and related services. Availability, pricing, validity and provider response depend on third-party networks and service providers.'
++  },
++  {
++    title: '3. Wallet funding and payments',
++    body: 'You are responsible for transferring funds to the correct account details displayed in your app and for confirming transaction details before payment. Wallet credit may be automatic or subject to payment provider confirmation. Charges, caps and processing delays may apply. Incorrect transfers, duplicate payments or failed third-party confirmations may require manual review.'
++  },
++  {
++    title: '4. Purchases and refunds',
++    body: 'Before buying data, airtime or bills, confirm the network, phone number, package, amount and validity. Successful provider transactions are usually final. If a provider transaction fails after wallet debit, IMAM DATASUB will attempt to reverse or refund the wallet balance based on confirmed provider status.'
++  },
++  {
++    title: '5. Account security',
++    body: 'You must keep your password, OTP, device access and transaction PIN confidential. Biometric login only protects access on your device. IMAM DATASUB is not responsible for losses caused by sharing login details, PINs, OTPs, or allowing unauthorized device access.'
++  },
++  {
++    title: '6. Prohibited use',
++    body: 'You must not use IMAM DATASUB for fraud, unauthorized transactions, abuse of referral systems, chargeback abuse, illegal activity, attempted hacking, API abuse, or any action that harms the platform, providers or other users.'
++  },
++  {
++    title: '7. Limitation of liability',
++    body: 'Services rely on telecom networks, payment processors, banks and VTU providers. IMAM DATASUB will make reasonable efforts to process and resolve transactions, but we are not liable for delays, outages, reversals, provider downtime, user-entered wrong details or events outside our control.'
++  },
++  {
++    title: '8. Changes and contact',
++    body: 'We may update these terms as the service grows. Continued use after updates means you accept the revised terms. For complaints or support, contact IMAM DATASUB through the official support channels below.'
++  }
++];
+diff --git a/imam_datasub_backend/src/lib/render-legal-page.ts b/imam_datasub_backend/src/lib/render-legal-page.ts
+new file mode 100644
+index 0000000..945d16c
+--- /dev/null
++++ b/imam_datasub_backend/src/lib/render-legal-page.ts
+@@ -0,0 +1,88 @@
++import type { LegalSection } from './legal-content.js';
++
++function escapeHtml(value: string) {
++  return value
++    .replace(/&/g, '&amp;')
++    .replace(/</g, '&lt;')
++    .replace(/>/g, '&gt;');
++}
++
++export function renderLegalPage(params: {
++  title: string;
++  effectiveDate: string;
++  sections: LegalSection[];
++  supportEmail: string;
++  supportWhatsApp: string;
++}) {
++  const sectionsHtml = params.sections
++    .map(
++      (s) => `
++      <section>
++        <h2>${escapeHtml(s.title)}</h2>
++        <p>${escapeHtml(s.body)}</p>
++      </section>`
++    )
++    .join('\n');
++
++  const whatsappDigits = params.supportWhatsApp.replace(/\+/g, '');
++
++  return `<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>${escapeHtml(params.title)} — IMAM DATASUB</title>
++  <style>
++    :root { color-scheme: light; }
++    * { box-sizing: border-box; }
++    body {
++      margin: 0;
++      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
++      background: #f7f8fa;
++      color: #1a1d21;
++      line-height: 1.6;
++    }
++    .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
++    header { margin-bottom: 28px; }
++    h1 { font-size: 26px; font-weight: 800; margin: 0 0 6px; }
++    .effective { color: #6b7280; font-size: 14px; margin: 0; }
++    section { margin-bottom: 22px; }
++    h2 { font-size: 17px; font-weight: 700; margin: 0 0 6px; }
++    p { margin: 0; color: #33383f; font-size: 15px; }
++    footer {
++      margin-top: 36px;
++      padding-top: 20px;
++      border-top: 1px solid #e5e7eb;
++      font-size: 14px;
++    }
++    footer a { color: #0a7d3d; text-decoration: none; font-weight: 600; }
++    .brand {
++      display: inline-block;
++      font-weight: 800;
++      letter-spacing: 0.02em;
++      color: #0a7d3d;
++      margin-bottom: 18px;
++      font-size: 14px;
++      text-transform: uppercase;
++    }
++  </style>
++</head>
++<body>
++  <div class="wrap">
++    <span class="brand">IMAM DATASUB</span>
++    <header>
++      <h1>${escapeHtml(params.title)}</h1>
++      <p class="effective">Effective date: ${escapeHtml(params.effectiveDate)}</p>
++    </header>
++    ${sectionsHtml}
++    <footer>
++      <p>
++        Contact us: <a href="mailto:${escapeHtml(params.supportEmail)}">${escapeHtml(params.supportEmail)}</a>
++        &nbsp;|&nbsp;
++        <a href="https://wa.me/${escapeHtml(whatsappDigits)}">WhatsApp ${escapeHtml(params.supportWhatsApp)}</a>
++      </p>
++    </footer>
++  </div>
++</body>
++</html>`;
++}
+diff --git a/imam_datasub_backend/src/routes/legal.routes.ts b/imam_datasub_backend/src/routes/legal.routes.ts
+new file mode 100644
+index 0000000..5aa7005
+--- /dev/null
++++ b/imam_datasub_backend/src/routes/legal.routes.ts
+@@ -0,0 +1,34 @@
++import { Router } from 'express';
++import { renderLegalPage } from '../lib/render-legal-page.js';
++import { EFFECTIVE_DATE, PRIVACY_SECTIONS, TERMS_SECTIONS } from '../lib/legal-content.js';
++
++export const legalRoutes = Router();
++
++// Matches imam_datasub/lib/core/config/app_config.dart's supportEmail/supportWhatsApp.
++// If you change contact details there, update these two constants too.
++const SUPPORT_EMAIL = 'abdulmhassan02@gmai.com';
++const SUPPORT_WHATSAPP = '+2348035679448';
++
++legalRoutes.get('/privacy-policy', (_req, res) => {
++  res.type('html').send(
++    renderLegalPage({
++      title: 'Privacy Policy',
++      effectiveDate: EFFECTIVE_DATE,
++      sections: PRIVACY_SECTIONS,
++      supportEmail: SUPPORT_EMAIL,
++      supportWhatsApp: SUPPORT_WHATSAPP
++    })
++  );
++});
++
++legalRoutes.get('/terms', (_req, res) => {
++  res.type('html').send(
++    renderLegalPage({
++      title: 'Terms & Conditions',
++      effectiveDate: EFFECTIVE_DATE,
++      sections: TERMS_SECTIONS,
++      supportEmail: SUPPORT_EMAIL,
++      supportWhatsApp: SUPPORT_WHATSAPP
++    })
++  );
++});

@@ -19,6 +19,7 @@ import { errorHandler } from './middleware/error.js';
 import { adminApiRoutes } from './routes/admin-api.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { kycRoutes } from './routes/kyc.routes.js';
+import { legalRoutes } from './routes/legal.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
 import { resultRoutes } from './routes/result.routes.js';
 import { transactionRoutes } from './routes/transaction.routes.js';
@@ -60,6 +61,14 @@ export function createApp() {
     return helmet()(req, res, next);
   });
   app.use(cors());
+
+  // Public web pages (no auth, no rate limit) - these are what Play Store's
+  // Data Safety / Privacy Policy fields, and the in-app "Read more" links,
+  // point at. Mounted after helmet/cors (so they still get proper security
+  // headers) but before the rate limiter below, so a burst of App/Play Store
+  // reviewers or crawlers hitting these plain HTML pages can never get 429'd.
+  app.use(legalRoutes);
+
   app.use(rateLimit({ windowMs: 60_000, limit: 120 }));
 
   // Mounted with a raw body parser, and BEFORE express.json() below, because Paystack's
