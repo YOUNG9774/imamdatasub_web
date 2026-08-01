@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'core/config/firebase_options.dart';
 import 'core/di/injection.dart';
@@ -65,6 +66,22 @@ void main() {
       };
 
       final container = ProviderContainer();
+
+      // flutter_secure_storage backs onto the iOS Keychain, which - unlike
+      // every other app data store - survives a full uninstall by default.
+      // Without this check, uninstalling and reinstalling to "start fresh"
+      // (e.g. to test a second account) instead resurrects the previous
+      // account's session, cached login PIN, and lockout counters, exactly
+      // as if the app had never been removed at all. SharedPreferences DOES
+      // get cleared on uninstall on both platforms, so its mere absence here
+      // is itself the signal that this is a genuinely fresh install.
+      final prefs = await SharedPreferences.getInstance();
+      const hasRunBeforeKey = 'kd_has_run_before';
+      if (prefs.getBool(hasRunBeforeKey) != true) {
+        await container.read(secureStorageProvider).clearAll();
+        await prefs.setBool(hasRunBeforeKey, true);
+      }
+
       final hive = container.read(hiveStorageProvider);
       await hive.initialize();
 

@@ -21,6 +21,8 @@
     "@adminjs/express": "^6.1.1",
     "@adminjs/prisma": "^5.0.4",
     "@prisma/client": "^5.22.0",
+    "connect-pg-simple": "^10.0.0",
+    "pg": "^8.13.1",
     "adminjs": "^7.8.17",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -39,10 +41,12 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/connect-pg-simple": "^7.0.3",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.0",
     "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
     "prisma": "^5.22.0",
     "tsx": "^4.19.2"
   },

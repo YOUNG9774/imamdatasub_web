@@ -33,6 +33,19 @@ const ADMIN_ROOT_PATH = '/admin';
 export function createApp() {
   const app = express();
 
+  // Railway terminates TLS at its edge and forwards requests over plain HTTP
+  // with X-Forwarded-* headers set. Without this, Express treats every request
+  // as insecure (req.secure === false) since it only looks at the raw socket -
+  // that breaks two things: express-rate-limit refuses to trust X-Forwarded-For
+  // for per-IP limiting (the ValidationError seen in deploy logs), and more
+  // importantly, express-session's admin cookie (which defaults to secure:
+  // 'auto', i.e. "secure only if req.secure") never gets marked secure, so
+  // browsers over HTTPS silently drop it - login succeeds server-side but the
+  // very next request has no session, bouncing straight back to /admin/login.
+  // `1` = trust exactly one hop (Railway's own proxy), not an open trust of
+  // arbitrary forwarded headers from the internet.
+  app.set('trust proxy', 1);
+
   app.get('/health', (_req, res) => {
     res.json({ status: true, service: 'imam-datasub-backend' });
   });

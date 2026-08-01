@@ -108,30 +108,44 @@ class SecureStorageService {
   }
 
   // ── Login PIN (6-digit, used to unlock the app locally) ────
+  // Namespaced by the currently cached userId (see saveUserId, written on
+  // every login/register in cacheAuthResponse) rather than one fixed key.
+  // Un-namespaced, this device would treat "a PIN exists" as true for ANY
+  // account that ever set one here - so a second, genuinely different
+  // account logging in on the same device would be shown the PIN-unlock
+  // screen demanding the FIRST account's PIN, which they have no way to
+  // know. Scoping by user makes "does THIS account have a local PIN on
+  // this device" the actual question being answered.
+  Future<String> _loginPinScope() async => (await getUserId()) ?? '_no_user';
+
   /// Save hashed login PIN — never store plain text
-  Future<void> saveLoginPin(String hashedPin) =>
-      _write(_Keys.loginPin, hashedPin);
-  Future<String?> getLoginPin() => _read(_Keys.loginPin);
+  Future<void> saveLoginPin(String hashedPin) async =>
+      _write('${_Keys.loginPin}:${await _loginPinScope()}', hashedPin);
+  Future<String?> getLoginPin() async =>
+      _read('${_Keys.loginPin}:${await _loginPinScope()}');
   Future<bool> hasLoginPin() async =>
-      (await _read(_Keys.loginPin)) != null;
-  Future<void> clearLoginPin() => _delete(_Keys.loginPin);
+      (await getLoginPin()) != null;
+  Future<void> clearLoginPin() async =>
+      _delete('${_Keys.loginPin}:${await _loginPinScope()}');
 
   // ── Login PIN Lockout ───────────────────────────────────────
-  Future<void> saveLoginPinAttempts(int attempts) =>
-      _write(_Keys.loginPinAttempts, attempts.toString());
+  Future<void> saveLoginPinAttempts(int attempts) async => _write(
+        '${_Keys.loginPinAttempts}:${await _loginPinScope()}',
+        attempts.toString(),
+      );
 
   Future<int> getLoginPinAttempts() async {
-    final raw = await _read(_Keys.loginPinAttempts);
+    final raw = await _read('${_Keys.loginPinAttempts}:${await _loginPinScope()}');
     return int.tryParse(raw ?? '0') ?? 0;
   }
 
-  Future<void> saveLoginPinLockoutUntil(DateTime until) => _write(
-        _Keys.loginPinLockoutUntil,
+  Future<void> saveLoginPinLockoutUntil(DateTime until) async => _write(
+        '${_Keys.loginPinLockoutUntil}:${await _loginPinScope()}',
         until.millisecondsSinceEpoch.toString(),
       );
 
   Future<DateTime?> getLoginPinLockoutUntil() async {
-    final raw = await _read(_Keys.loginPinLockoutUntil);
+    final raw = await _read('${_Keys.loginPinLockoutUntil}:${await _loginPinScope()}');
     if (raw == null) return null;
     final ms = int.tryParse(raw);
     if (ms == null) return null;
@@ -139,8 +153,9 @@ class SecureStorageService {
   }
 
   Future<void> clearLoginPinLockout() async {
-    await _delete(_Keys.loginPinAttempts);
-    await _delete(_Keys.loginPinLockoutUntil);
+    final scope = await _loginPinScope();
+    await _delete('${_Keys.loginPinAttempts}:$scope');
+    await _delete('${_Keys.loginPinLockoutUntil}:$scope');
   }
 
   // ── Biometric ─────────────────────────────────────────────
