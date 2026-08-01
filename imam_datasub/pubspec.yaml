@@ -157,6 +157,7 @@ flutter:
     - assets/icon/
     - assets/images/
     - assets/images/networks/
+    - assets/images/onboarding/
 
   # NOTE: no local `fonts:` block — these TTF files never existed in the
   # project (that's what was throwing the missing-asset-directory warnings).

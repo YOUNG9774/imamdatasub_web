@@ -10,6 +10,8 @@ import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/auth_usecases.dart';
+import '../../../transactions/presentation/providers/transactions_provider.dart';
+import '../../../wallet/presentation/providers/wallet_provider.dart';
 
 // Ã¢â€â‚¬Ã¢â€â‚¬ Data layer providers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
@@ -227,6 +229,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return false;
       },
       (loginResult) {
+        _invalidateUserScopedProviders();
         state = state.copyWith(
           user: loginResult.user,
           status: loginResult.requiresLoginPinSetup
@@ -269,6 +272,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         // New registrants always need to set a login PIN right after this -
         // requiresLoginPinSetup will be true here since the account was
         // just created.
+        _invalidateUserScopedProviders();
         state = state.copyWith(
           user: loginResult.user,
           status: loginResult.requiresLoginPinSetup
@@ -302,6 +306,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       },
       (user) {
         if (user.isNotEmpty) {
+          _invalidateUserScopedProviders();
           state = state.copyWith(
             user: user,
             status: AuthStatus.authenticated,
@@ -356,6 +361,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     final result = await _ref.read(biometricLoginUseCaseProvider).call();
     return result.fold((failure) => false, (user) {
+      _invalidateUserScopedProviders();
       state = state.copyWith(
         user: user,
         status: AuthStatus.authenticated,
@@ -402,6 +408,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await _ref.read(logoutUseCaseProvider).call();
+    _invalidateUserScopedProviders();
     state = const AuthState(status: AuthStatus.unauthenticated);
     _syncRouterAuthState();
   }
@@ -410,6 +417,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   void _syncRouterAuthState() {
     _ref.read(authStateProvider.notifier).state = AsyncValue.data(state.status);
+  }
+
+  /// Drops every provider that caches data scoped to a specific account
+  /// (wallet balance, recent/paginated transactions). These providers are
+  /// process-lifetime singletons that only fetch once and then sit in
+  /// memory - without this, switching accounts (logout -> login as someone
+  /// else) or logging into a freshly created account in the same app
+  /// session would leave the previous user's wallet balance and
+  /// transaction history on screen until an unrelated refresh happened to
+  /// overwrite it. Called on every transition into or out of an
+  /// authenticated session so a new session always starts from a clean
+  /// slate rather than reusing another account's cached state.
+  void _invalidateUserScopedProviders() {
+    _ref.invalidate(walletNotifierProvider);
+    _ref.invalidate(recentTransactionsProvider);
+    _ref.invalidate(transactionListProvider);
   }
 
   Future<void> refreshUser() async {

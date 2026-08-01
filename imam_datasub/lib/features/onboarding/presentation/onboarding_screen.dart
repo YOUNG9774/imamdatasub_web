@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../../core/constants/app_colors.dart';
@@ -13,13 +14,18 @@ class _OnboardData {
   const _OnboardData({
     required this.title,
     required this.body,
-    required this.icon,
+    required this.imageAsset,
     required this.gradient,
+    this.isSvg = false,
   });
 
   final String title;
   final String body;
-  final IconData icon;
+
+  /// Path to the hero artwork for this page (raster .webp/.png or a
+  /// vector .svg — see [isSvg]).
+  final String imageAsset;
+  final bool isSvg;
   final LinearGradient gradient;
 }
 
@@ -27,13 +33,13 @@ const _pages = [
   _OnboardData(
     title: AppStrings.onboarding1Title,
     body: AppStrings.onboarding1Body,
-    icon: Icons.wifi_rounded,
+    imageAsset: 'assets/images/onboarding/onboarding_1.webp',
     gradient: AppColors.primaryGradient,
   ),
   _OnboardData(
     title: AppStrings.onboarding2Title,
     body: AppStrings.onboarding2Body,
-    icon: Icons.receipt_long_rounded,
+    imageAsset: 'assets/images/onboarding/onboarding_2.webp',
     gradient: LinearGradient(
       colors: [AppColors.secondary500, AppColors.accent500],
     ),
@@ -41,7 +47,8 @@ const _pages = [
   _OnboardData(
     title: AppStrings.onboarding3Title,
     body: AppStrings.onboarding3Body,
-    icon: Icons.card_giftcard_rounded,
+    imageAsset: 'assets/images/onboarding/onboarding_3.svg',
+    isSvg: true,
     gradient: LinearGradient(
       colors: [AppColors.accent500, AppColors.primary600],
     ),
@@ -151,27 +158,34 @@ class _OnboardPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 220,
-            height: 220,
-            decoration: BoxDecoration(
-              gradient: data.gradient,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: data.gradient.colors.first.withValues(alpha: 0.3),
-                  blurRadius: 40,
-                  offset: const Offset(0, 16),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 280, maxWidth: 320),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: data.gradient.colors.first.withValues(alpha: 0.28),
+                      blurRadius: 36,
+                      offset: const Offset(0, 18),
+                    ),
+                  ],
                 ),
-              ],
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: data.isSvg
+                      ? SvgPicture.asset(data.imageAsset, fit: BoxFit.contain)
+                      : Image.asset(data.imageAsset, fit: BoxFit.cover),
+                ),
+              ),
             ),
-            child: Icon(data.icon, size: 88, color: Colors.white),
           )
               .animate()
               .fadeIn(duration: 400.ms)
-              .scale(begin: const Offset(0.8, 0.8), curve: Curves.easeOutBack),
+              .scale(begin: const Offset(0.9, 0.9), curve: Curves.easeOutBack),
 
-          const SizedBox(height: 48),
+          const SizedBox(height: 40),
 
           Text(
             data.title,
