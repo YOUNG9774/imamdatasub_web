@@ -21,6 +21,23 @@ class TokenRefreshCoordinator {
   final SecureStorageService _storage;
   Future<bool>? _inFlight;
 
+  // Bumped on every logout and every fresh login. A refresh call started
+  // under an OLD generation whose response only arrives after the session
+  // has already changed (e.g. user A's near-expiry token was being refreshed
+  // in the background right as they logged out and user B logged in) has its
+  // result discarded instead of being written to storage - otherwise it would
+  // silently overwrite user B's brand-new tokens with user A's refreshed
+  // ones, and the very next request would go out under the wrong identity.
+  int _generation = 0;
+
+  /// Call this on logout AND right after a successful fresh login, so any
+  /// refresh still in flight from the previous session is guaranteed to be
+  /// treated as stale by the time it resolves.
+  void invalidatePendingRefreshes() {
+    _generation++;
+    _inFlight = null;
+  }
+
   final Dio _bareDio = Dio(
     BaseOptions(
       baseUrl: AppConfig.baseUrl,
@@ -56,6 +73,7 @@ class TokenRefreshCoordinator {
   }
 
   Future<bool> _doRefresh() async {
+    final generationAtStart = _generation;
     final refreshToken = await _storage.getRefreshToken();
     if (refreshToken == null || refreshToken.isEmpty) return false;
 
@@ -81,6 +99,15 @@ class TokenRefreshCoordinator {
           : int.tryParse(data['expires_in']?.toString() ?? '') ?? 3600;
 
       if (newAccess == null || newAccess.isEmpty || newRefresh == null || newRefresh.isEmpty) {
+        return false;
+      }
+
+      // The session changed (logout and/or a different user logged in) while
+      // this refresh call was on the wire. Discard the result — writing it
+      // now would resurrect a dead session or clobber a different user's
+      // freshly-cached tokens with these stale ones.
+      if (generationAtStart != _generation) {
+        appLogger.w('Discarding stale token refresh — session changed while refreshing');
         return false;
       }
 

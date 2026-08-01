@@ -3,6 +3,7 @@ import '../../../../core/error/error_handler.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/network_info.dart';
+import '../../../../core/network/token_refresh_coordinator.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_datasource.dart';
@@ -13,13 +14,16 @@ class AuthRepositoryImpl implements AuthRepository {
     required AuthRemoteDataSource remote,
     required AuthLocalDataSource local,
     required NetworkInfo networkInfo,
+    required TokenRefreshCoordinator refreshCoordinator,
   }) : _remote = remote,
        _local = local,
-       _networkInfo = networkInfo;
+       _networkInfo = networkInfo,
+       _refreshCoordinator = refreshCoordinator;
 
   final AuthRemoteDataSource _remote;
   final AuthLocalDataSource _local;
   final NetworkInfo _networkInfo;
+  final TokenRefreshCoordinator _refreshCoordinator;
 
   @override
   Future<Either<Failure, AuthLoginResult>> login({
@@ -37,6 +41,12 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
         loginPin: loginPin,
       );
+
+      // A refresh for whatever session existed before this login (if any)
+      // may still be in flight - make sure its result can never land after
+      // this point and overwrite the tokens we're about to cache below.
+      _refreshCoordinator.invalidatePendingRefreshes();
+
       await _local.cacheAuthResponse(response);
 
       if (rememberMe) {
@@ -82,6 +92,7 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
         referralCode: referralCode,
       );
+      _refreshCoordinator.invalidatePendingRefreshes();
       await _local.cacheAuthResponse(response);
       return Right(
         AuthLoginResult(
@@ -214,10 +225,12 @@ class AuthRepositoryImpl implements AuthRepository {
         await _remote.logout();
       }
       await _local.clearSession();
+      _refreshCoordinator.invalidatePendingRefreshes();
       return const Right(null);
     } catch (e) {
       // Always clear local session even if remote call fails
       await _local.clearSession();
+      _refreshCoordinator.invalidatePendingRefreshes();
       return const Right(null);
     }
   }

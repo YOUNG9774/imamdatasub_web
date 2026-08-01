@@ -28,6 +28,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
     remote: ref.read(authRemoteDataSourceProvider),
     local: ref.read(authLocalDataSourceProvider),
     networkInfo: ref.read(networkInfoProvider),
+    refreshCoordinator: ref.read(tokenRefreshCoordinatorProvider),
   );
 });
 
@@ -125,10 +126,21 @@ class AuthState {
 // Ã¢â€â‚¬Ã¢â€â‚¬ Auth Notifier Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier(this._ref) : super(const AuthState()) {
-    _checkSession();
+    _ready = _checkSession();
   }
 
   final Ref _ref;
+
+  /// Resolves once the very first `_checkSession()` run (kicked off in the
+  /// constructor above) has fully updated `state`. Callers that need to
+  /// branch on the resolved status right after app start - the splash
+  /// screen, specifically - must await this before reading `state`, or they
+  /// race the constructor's fire-and-forget `_checkSession()` call and will
+  /// almost always observe the pre-check default state instead of the real
+  /// one (which is exactly what let a PIN-locked session fall through as if
+  /// it were freshly unauthenticated).
+  late final Future<void> _ready;
+  Future<void> get ready => _ready;
 
   Future<void> _checkSession() async {
     state = state.copyWith(isLoading: true);

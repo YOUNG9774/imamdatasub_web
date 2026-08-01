@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/di/injection.dart';
+import '../../../core/router/auth_status.dart';
 import '../../../core/router/route_names.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 
@@ -36,20 +37,39 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     }
 
     // Check auth session
-    final authState = ref.read(authNotifierProvider);
-    if (authState.isAuthenticated) {
-      if (mounted) context.go(RouteNames.home);
-    } else {
-      // Try biometric auto-login if enabled
-      final loggedInViaBiometric = await ref
-          .read(authNotifierProvider.notifier)
-          .tryBiometricLogin();
-      if (!mounted) return;
-      if (loggedInViaBiometric) {
+    final authNotifier = ref.read(authNotifierProvider.notifier);
+    // Wait for the initial _checkSession() (kicked off when authNotifierProvider
+    // was first read - possibly just now) to fully resolve. Reading `state`
+    // any earlier would almost always see the pre-check default instead of
+    // the real status - which is exactly how a PIN-locked session used to
+    // slip through as if it were freshly unauthenticated.
+    await authNotifier.ready;
+    if (!mounted) return;
+
+    final status = ref.read(authNotifierProvider).status;
+    switch (status) {
+      case AuthStatus.authenticated:
         context.go(RouteNames.home);
-      } else {
-        context.go(RouteNames.login);
-      }
+        return;
+      case AuthStatus.pinLockRequired:
+        context.go(RouteNames.loginPinUnlock);
+        return;
+      case AuthStatus.pinSetupRequired:
+        context.go(RouteNames.pinSetup);
+        return;
+      case AuthStatus.unauthenticated:
+      case AuthStatus.loading:
+        break;
+    }
+
+    // No usable session at all - try biometric auto-login if enabled,
+    // otherwise fall through to the regular login screen.
+    final loggedInViaBiometric = await authNotifier.tryBiometricLogin();
+    if (!mounted) return;
+    if (loggedInViaBiometric) {
+      context.go(RouteNames.home);
+    } else {
+      context.go(RouteNames.login);
     }
   }
 

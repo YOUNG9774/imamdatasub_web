@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/api_service.dart';
 import '../network/dio_client.dart';
 import '../network/network_info.dart';
+import '../network/token_refresh_coordinator.dart';
 import '../security/biometric_service.dart';
 import '../storage/hive_storage.dart';
 import '../storage/secure_storage.dart';
@@ -29,12 +30,21 @@ final connectivityStreamProvider = StreamProvider<bool>((ref) {
 });
 
 // ── API ───────────────────────────────────────────────────
+// A single long-lived coordinator per app session. Exposed as its own
+// provider (rather than created inline inside DioClient.create) so the auth
+// repository can call invalidatePendingRefreshes() on it directly at logout
+// and at the start of a fresh login - see AuthRepositoryImpl.
+final tokenRefreshCoordinatorProvider = Provider<TokenRefreshCoordinator>((ref) {
+  return TokenRefreshCoordinator(ref.read(secureStorageProvider));
+});
+
 final dioClientProvider = Provider((ref) {
   final storage = ref.read(secureStorageProvider);
   final container = ref.container;
 
   return DioClient.create(
     storage: storage,
+    refreshCoordinator: ref.read(tokenRefreshCoordinatorProvider),
     onSessionExpired: () async {
       // Invalidate auth state on session expiry
       container.invalidate(authStateProvider);

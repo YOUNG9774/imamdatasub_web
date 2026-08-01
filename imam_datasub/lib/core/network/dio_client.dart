@@ -11,6 +11,7 @@ class DioClient {
 
   static Dio create({
     required SecureStorageService storage,
+    required TokenRefreshCoordinator refreshCoordinator,
     required Future<void> Function() onSessionExpired,
   }) {
     final dio = Dio(
@@ -28,8 +29,6 @@ class DioClient {
         maxRedirects: 3,
       ),
     );
-
-    final refreshCoordinator = TokenRefreshCoordinator(storage);
 
     // Order matters: logging → auth → retry
     dio.interceptors.addAll([

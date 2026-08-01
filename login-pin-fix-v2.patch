@@ -1,0 +1,272 @@
+diff --git a/imam_datasub/lib/core/di/injection.dart b/imam_datasub/lib/core/di/injection.dart
+index cce408d..0f21e00 100644
+--- a/imam_datasub/lib/core/di/injection.dart
++++ b/imam_datasub/lib/core/di/injection.dart
+@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import '../network/api_service.dart';
+ import '../network/dio_client.dart';
+ import '../network/network_info.dart';
++import '../network/token_refresh_coordinator.dart';
+ import '../security/biometric_service.dart';
+ import '../storage/hive_storage.dart';
+ import '../storage/secure_storage.dart';
+@@ -29,12 +30,21 @@ final connectivityStreamProvider = StreamProvider<bool>((ref) {
+ });
+ 
+ // ── API ───────────────────────────────────────────────────
++// A single long-lived coordinator per app session. Exposed as its own
++// provider (rather than created inline inside DioClient.create) so the auth
++// repository can call invalidatePendingRefreshes() on it directly at logout
++// and at the start of a fresh login - see AuthRepositoryImpl.
++final tokenRefreshCoordinatorProvider = Provider<TokenRefreshCoordinator>((ref) {
++  return TokenRefreshCoordinator(ref.read(secureStorageProvider));
++});
++
+ final dioClientProvider = Provider((ref) {
+   final storage = ref.read(secureStorageProvider);
+   final container = ref.container;
+ 
+   return DioClient.create(
+     storage: storage,
++    refreshCoordinator: ref.read(tokenRefreshCoordinatorProvider),
+     onSessionExpired: () async {
+       // Invalidate auth state on session expiry
+       container.invalidate(authStateProvider);
+diff --git a/imam_datasub/lib/core/network/dio_client.dart b/imam_datasub/lib/core/network/dio_client.dart
+index 9b5c7cf..1b01a07 100644
+--- a/imam_datasub/lib/core/network/dio_client.dart
++++ b/imam_datasub/lib/core/network/dio_client.dart
+@@ -11,6 +11,7 @@ class DioClient {
+ 
+   static Dio create({
+     required SecureStorageService storage,
++    required TokenRefreshCoordinator refreshCoordinator,
+     required Future<void> Function() onSessionExpired,
+   }) {
+     final dio = Dio(
+@@ -29,8 +30,6 @@ class DioClient {
+       ),
+     );
+ 
+-    final refreshCoordinator = TokenRefreshCoordinator(storage);
+-
+     // Order matters: logging → auth → retry
+     dio.interceptors.addAll([
+       LoggingInterceptor(),
+diff --git a/imam_datasub/lib/core/network/token_refresh_coordinator.dart b/imam_datasub/lib/core/network/token_refresh_coordinator.dart
+index 3bf2e69..8e1948a 100644
+--- a/imam_datasub/lib/core/network/token_refresh_coordinator.dart
++++ b/imam_datasub/lib/core/network/token_refresh_coordinator.dart
+@@ -21,6 +21,23 @@ class TokenRefreshCoordinator {
+   final SecureStorageService _storage;
+   Future<bool>? _inFlight;
+ 
++  // Bumped on every logout and every fresh login. A refresh call started
++  // under an OLD generation whose response only arrives after the session
++  // has already changed (e.g. user A's near-expiry token was being refreshed
++  // in the background right as they logged out and user B logged in) has its
++  // result discarded instead of being written to storage - otherwise it would
++  // silently overwrite user B's brand-new tokens with user A's refreshed
++  // ones, and the very next request would go out under the wrong identity.
++  int _generation = 0;
++
++  /// Call this on logout AND right after a successful fresh login, so any
++  /// refresh still in flight from the previous session is guaranteed to be
++  /// treated as stale by the time it resolves.
++  void invalidatePendingRefreshes() {
++    _generation++;
++    _inFlight = null;
++  }
++
+   final Dio _bareDio = Dio(
+     BaseOptions(
+       baseUrl: AppConfig.baseUrl,
+@@ -56,6 +73,7 @@ class TokenRefreshCoordinator {
+   }
+ 
+   Future<bool> _doRefresh() async {
++    final generationAtStart = _generation;
+     final refreshToken = await _storage.getRefreshToken();
+     if (refreshToken == null || refreshToken.isEmpty) return false;
+ 
+@@ -84,6 +102,15 @@ class TokenRefreshCoordinator {
+         return false;
+       }
+ 
++      // The session changed (logout and/or a different user logged in) while
++      // this refresh call was on the wire. Discard the result — writing it
++      // now would resurrect a dead session or clobber a different user's
++      // freshly-cached tokens with these stale ones.
++      if (generationAtStart != _generation) {
++        appLogger.w('Discarding stale token refresh — session changed while refreshing');
++        return false;
++      }
++
+       await _storage.saveAccessToken(newAccess);
+       await _storage.saveRefreshToken(newRefresh);
+       await _storage.saveTokenExpiry(DateTime.now().add(Duration(seconds: expiresIn)));
+diff --git a/imam_datasub/lib/features/auth/data/repositories/auth_repository_impl.dart b/imam_datasub/lib/features/auth/data/repositories/auth_repository_impl.dart
+index 1068a55..a5d7e50 100644
+--- a/imam_datasub/lib/features/auth/data/repositories/auth_repository_impl.dart
++++ b/imam_datasub/lib/features/auth/data/repositories/auth_repository_impl.dart
+@@ -3,6 +3,7 @@ import '../../../../core/error/error_handler.dart';
+ import '../../../../core/error/exceptions.dart';
+ import '../../../../core/error/failures.dart';
+ import '../../../../core/network/network_info.dart';
++import '../../../../core/network/token_refresh_coordinator.dart';
+ import '../../domain/entities/user_entity.dart';
+ import '../../domain/repositories/auth_repository.dart';
+ import '../datasources/auth_local_datasource.dart';
+@@ -13,13 +14,16 @@ class AuthRepositoryImpl implements AuthRepository {
+     required AuthRemoteDataSource remote,
+     required AuthLocalDataSource local,
+     required NetworkInfo networkInfo,
++    required TokenRefreshCoordinator refreshCoordinator,
+   }) : _remote = remote,
+        _local = local,
+-       _networkInfo = networkInfo;
++       _networkInfo = networkInfo,
++       _refreshCoordinator = refreshCoordinator;
+ 
+   final AuthRemoteDataSource _remote;
+   final AuthLocalDataSource _local;
+   final NetworkInfo _networkInfo;
++  final TokenRefreshCoordinator _refreshCoordinator;
+ 
+   @override
+   Future<Either<Failure, AuthLoginResult>> login({
+@@ -37,6 +41,12 @@ class AuthRepositoryImpl implements AuthRepository {
+         password: password,
+         loginPin: loginPin,
+       );
++
++      // A refresh for whatever session existed before this login (if any)
++      // may still be in flight - make sure its result can never land after
++      // this point and overwrite the tokens we're about to cache below.
++      _refreshCoordinator.invalidatePendingRefreshes();
++
+       await _local.cacheAuthResponse(response);
+ 
+       if (rememberMe) {
+@@ -82,6 +92,7 @@ class AuthRepositoryImpl implements AuthRepository {
+         password: password,
+         referralCode: referralCode,
+       );
++      _refreshCoordinator.invalidatePendingRefreshes();
+       await _local.cacheAuthResponse(response);
+       return Right(
+         AuthLoginResult(
+@@ -214,10 +225,12 @@ class AuthRepositoryImpl implements AuthRepository {
+         await _remote.logout();
+       }
+       await _local.clearSession();
++      _refreshCoordinator.invalidatePendingRefreshes();
+       return const Right(null);
+     } catch (e) {
+       // Always clear local session even if remote call fails
+       await _local.clearSession();
++      _refreshCoordinator.invalidatePendingRefreshes();
+       return const Right(null);
+     }
+   }
+diff --git a/imam_datasub/lib/features/auth/presentation/providers/auth_provider.dart b/imam_datasub/lib/features/auth/presentation/providers/auth_provider.dart
+index 0ac1c43..b1ed7fd 100644
+--- a/imam_datasub/lib/features/auth/presentation/providers/auth_provider.dart
++++ b/imam_datasub/lib/features/auth/presentation/providers/auth_provider.dart
+@@ -28,6 +28,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
+     remote: ref.read(authRemoteDataSourceProvider),
+     local: ref.read(authLocalDataSourceProvider),
+     networkInfo: ref.read(networkInfoProvider),
++    refreshCoordinator: ref.read(tokenRefreshCoordinatorProvider),
+   );
+ });
+ 
+@@ -125,11 +126,22 @@ class AuthState {
+ // Ã¢â€â‚¬Ã¢â€â‚¬ Auth Notifier Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+ class AuthNotifier extends StateNotifier<AuthState> {
+   AuthNotifier(this._ref) : super(const AuthState()) {
+-    _checkSession();
++    _ready = _checkSession();
+   }
+ 
+   final Ref _ref;
+ 
++  /// Resolves once the very first `_checkSession()` run (kicked off in the
++  /// constructor above) has fully updated `state`. Callers that need to
++  /// branch on the resolved status right after app start - the splash
++  /// screen, specifically - must await this before reading `state`, or they
++  /// race the constructor's fire-and-forget `_checkSession()` call and will
++  /// almost always observe the pre-check default state instead of the real
++  /// one (which is exactly what let a PIN-locked session fall through as if
++  /// it were freshly unauthenticated).
++  late final Future<void> _ready;
++  Future<void> get ready => _ready;
++
+   Future<void> _checkSession() async {
+     state = state.copyWith(isLoading: true);
+     final repository = _ref.read(authRepositoryProvider);
+diff --git a/imam_datasub/lib/features/splash/presentation/splash_screen.dart b/imam_datasub/lib/features/splash/presentation/splash_screen.dart
+index 0dfe7a4..e1c2551 100644
+--- a/imam_datasub/lib/features/splash/presentation/splash_screen.dart
++++ b/imam_datasub/lib/features/splash/presentation/splash_screen.dart
+@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
+ import '../../../core/constants/app_colors.dart';
+ import '../../../core/constants/app_strings.dart';
+ import '../../../core/di/injection.dart';
++import '../../../core/router/auth_status.dart';
+ import '../../../core/router/route_names.dart';
+ import '../../auth/presentation/providers/auth_provider.dart';
+ 
+@@ -36,20 +37,39 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
+     }
+ 
+     // Check auth session
+-    final authState = ref.read(authNotifierProvider);
+-    if (authState.isAuthenticated) {
+-      if (mounted) context.go(RouteNames.home);
+-    } else {
+-      // Try biometric auto-login if enabled
+-      final loggedInViaBiometric = await ref
+-          .read(authNotifierProvider.notifier)
+-          .tryBiometricLogin();
+-      if (!mounted) return;
+-      if (loggedInViaBiometric) {
++    final authNotifier = ref.read(authNotifierProvider.notifier);
++    // Wait for the initial _checkSession() (kicked off when authNotifierProvider
++    // was first read - possibly just now) to fully resolve. Reading `state`
++    // any earlier would almost always see the pre-check default instead of
++    // the real status - which is exactly how a PIN-locked session used to
++    // slip through as if it were freshly unauthenticated.
++    await authNotifier.ready;
++    if (!mounted) return;
++
++    final status = ref.read(authNotifierProvider).status;
++    switch (status) {
++      case AuthStatus.authenticated:
+         context.go(RouteNames.home);
+-      } else {
+-        context.go(RouteNames.login);
+-      }
++        return;
++      case AuthStatus.pinLockRequired:
++        context.go(RouteNames.loginPinUnlock);
++        return;
++      case AuthStatus.pinSetupRequired:
++        context.go(RouteNames.pinSetup);
++        return;
++      case AuthStatus.unauthenticated:
++      case AuthStatus.loading:
++        break;
++    }
++
++    // No usable session at all - try biometric auto-login if enabled,
++    // otherwise fall through to the regular login screen.
++    final loggedInViaBiometric = await authNotifier.tryBiometricLogin();
++    if (!mounted) return;
++    if (loggedInViaBiometric) {
++      context.go(RouteNames.home);
++    } else {
++      context.go(RouteNames.login);
+     }
+   }
+ 
