@@ -147,18 +147,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       CircleAvatar(
                         radius: 22,
                         backgroundColor: AppColors.primary100,
-                        backgroundImage: user?.photoUrl != null
-                            ? NetworkImage(user!.photoUrl!)
-                            : null,
-                        child: user?.photoUrl == null
-                            ? Text(
-                                user?.initials ?? 'KD',
-                                style: TextStyle(
-                                  color: AppColors.primary700,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              )
-                            : null,
+                        child: Text(
+                          user?.initials ?? 'KD',
+                          style: TextStyle(
+                            color: AppColors.primary700,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(

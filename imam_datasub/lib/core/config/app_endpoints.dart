@@ -19,7 +19,6 @@ class AppEndpoints {
   // User / Profile
   static String get userProfile => '$_base/user/profile';
   static String get updateProfile => '$_base/user/profile/sync';
-  static String get updatePhoto => '$_base/user/photo';
   static String get changePassword => '$_base/user/password/change';
   static String get setPin => '$_base/user/pin/set';
   static String get changePin => '$_base/user/pin/change';

@@ -10,26 +10,19 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
-    <!-- Camera for KYC / selfie -->
-    <uses-permission android:name="android.permission.CAMERA" />
-
     <!-- Notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- Storage for file downloads / receipts -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- No CAMERA / storage / media permissions: profile pictures use a
+         generated initials avatar, not a device photo. Receipt downloads
+         (receipt_service.dart) use getTemporaryDirectory() and
+         getApplicationDocumentsDirectory(), both app-private sandboxed
+         locations that require no permission on any Android version. -->
 
     <!-- ── Feature declarations ──────────────────────────── -->
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
     <uses-feature
         android:name="android.hardware.fingerprint"
         android:required="false" />

@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -451,19 +450,14 @@ class _ProfileHeader extends StatelessWidget {
         CircleAvatar(
           radius: AppDimensions.avatarXXL / 2,
           backgroundColor: AppColors.primary100,
-          backgroundImage: user?.photoUrl != null
-              ? CachedNetworkImageProvider(user!.photoUrl!)
-              : null,
-          child: user?.photoUrl == null
-              ? Text(
-                  user?.initials ?? 'ID',
-                  style: const TextStyle(
-                    color: AppColors.primary700,
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                  ),
-                )
-              : null,
+          child: Text(
+            user?.initials ?? 'ID',
+            style: const TextStyle(
+              color: AppColors.primary700,
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ),
         const SizedBox(height: 14),
         Text(

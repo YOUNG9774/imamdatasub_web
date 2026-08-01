@@ -86,7 +86,6 @@ dependencies:
   flutter_local_notifications: ^18.0.1
 
   # ── Media & Files ─────────────────────────────────────────
-  image_picker: ^1.1.2
   # Bumped from 8.3.7: that version still used the old Java Android
   # implementation, which broke compiling with our current Gradle
   # 8.14.4 / AGP 8.11.1 toolchain ("package android.* does not exist").

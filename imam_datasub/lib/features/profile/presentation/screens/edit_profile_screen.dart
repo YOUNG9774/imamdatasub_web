@@ -1,9 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
@@ -29,8 +27,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late final TextEditingController _phoneController;
 
   bool _isLoading = false;
-  XFile? _newPhoto;
-  final _picker = ImagePicker();
 
   @override
   void initState() {
@@ -49,15 +45,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _pickPhoto() async {
-    final photo = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-      maxWidth: 800,
-    );
-    if (photo != null) setState(() => _newPhoto = photo);
-  }
-
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
     context.hideKeyboard();
@@ -66,18 +53,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final dio = ref.read(dioClientProvider);
 
     try {
-      // Upload photo first if changed
-      if (_newPhoto != null) {
-        final bytes = await _newPhoto!.readAsBytes();
-        final formData = FormData.fromMap({
-          'photo': MultipartFile.fromBytes(
-            bytes,
-            filename: _newPhoto!.name,
-          ),
-        });
-        await dio.post(AppEndpoints.updatePhoto, data: formData);
-      }
-
       // Update profile fields
       await dio.post(AppEndpoints.updateProfile, data: {
         'full_name': _nameController.text.trim(),
@@ -141,62 +116,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               children: [
                 const SizedBox(height: 12),
 
-                // ── Avatar picker ──────────────────────────
+                // ── Avatar ─────────────────────────────────
                 Center(
-                  child: GestureDetector(
-                    onTap: _pickPhoto,
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 52,
-                          backgroundColor: AppColors.primary100,
-                          backgroundImage: _newPhoto != null
-                              ? null
-                              : (user?.photoUrl != null
-                                  ? CachedNetworkImageProvider(
-                                      user!.photoUrl!)
-                                  : null),
-                          child: _newPhoto == null && user?.photoUrl == null
-                              ? Text(
-                                  user?.initials ?? 'KD',
-                                  style: const TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.primary700,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        Positioned(
-                          bottom: 2,
-                          right: 2,
-                          child: Container(
-                            padding: const EdgeInsets.all(7),
-                            decoration: BoxDecoration(
-                              color: context.colors.primary,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: context.colors.surface,
-                                width: 2,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt_rounded,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ],
+                  child: CircleAvatar(
+                    radius: 52,
+                    backgroundColor: AppColors.primary100,
+                    child: Text(
+                      user?.initials ?? 'KD',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary700,
+                      ),
                     ),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-                Text(
-                  'Tap to change photo',
-                  style: context.textTheme.bodySmall?.copyWith(
-                    color: AppColors.neutral500,
                   ),
                 ),
 
