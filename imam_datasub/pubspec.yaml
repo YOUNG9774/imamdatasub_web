@@ -54,7 +54,7 @@ dependencies:
   # from a /ref/CODE link (see referral.routes.ts server-side, and
   # main.dart's _capturePendingReferralCode). Android-only by design - iOS
   # has no equivalent API, calls are guarded accordingly.
-  android_play_install_referrer: ^2.0.0
+  android_play_install_referrer: 0.4.0
   path_provider: ^2.1.5
 
   # ── UI / UX ───────────────────────────────────────────────
