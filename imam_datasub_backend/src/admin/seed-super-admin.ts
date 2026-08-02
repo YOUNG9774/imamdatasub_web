@@ -31,6 +31,15 @@ async function main() {
     create: { email, passwordHash, fullName, role: 'SUPER_ADMIN' }
   });
 
+  // Also make sure the referral settings singleton exists so it's editable
+  // in the admin panel immediately, rather than only appearing after the
+  // first purchase/withdrawal/stats call self-seeds it.
+  await prisma.referralSettings.upsert({
+    where: { id: 'default' },
+    update: {},
+    create: { id: 'default' }
+  });
+
   console.log(`\nSuper admin ready: ${admin.email} (id: ${admin.id})`);
   console.log('Log in at /admin with this email and the password you just set.');
 

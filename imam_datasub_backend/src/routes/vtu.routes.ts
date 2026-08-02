@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { providerService, type ProviderPurchaseInput } from '../services/provider.service.js';
 import { debitWallet, refundWallet } from '../services/wallet.service.js';
+import { awardReferralCommission } from '../services/referral.service.js';
 
 export const vtuRoutes = Router();
 
@@ -64,6 +65,14 @@ async function processProviderPurchase(params: {
         provider: 'alrahuz',
         providerRef: provider.providerRef ?? null
       }
+    });
+
+    // Best-effort by design (see the function's own doc comment) - never
+    // throws, so it can't turn a successful purchase into a failed response.
+    await awardReferralCommission({
+      buyerId: params.userId,
+      purchaseAmountKobo: debit.transaction.amountKobo,
+      sourceTransactionId: debit.transaction.id
     });
 
     return {

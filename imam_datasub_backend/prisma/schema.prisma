@@ -81,7 +81,8 @@ model User {
   walletBalanceKobo    BigInt         @default(0)
   referralCode         String         @unique
   referredByCode       String?
-  referralEarningsKobo BigInt         @default(0)
+  referralEarningsKobo BigInt         @default(0) // current unwithdrawn ("pending") commission balance
+  referralWithdrawnKobo BigInt        @default(0) // lifetime total moved into the wallet via /referral/withdraw
   kycStatus            KycStatus      @default(UNVERIFIED)
   emailVerified        Boolean        @default(false)
   phoneVerified        Boolean        @default(false)
@@ -186,6 +187,18 @@ model ServicePricing {
   updatedAt        DateTime @updatedAt
 
   @@index([isActive])
+}
+// Singleton row (id is always "default") holding admin-editable referral
+// program settings. Read fresh by referral.service.ts on every relevant
+// call - traffic here is low enough (one read per purchase/withdrawal/stats
+// view) that caching isn't worth the staleness risk of an admin changing
+// the rate and it not taking effect immediately.
+model ReferralSettings {
+  id                String   @id @default("default")
+  isEnabled         Boolean  @default(true)
+  commissionRate    Float    @default(0.02) // 0.02 = 2%
+  minWithdrawalKobo BigInt   @default(50000) // 50000 kobo = NGN 500
+  updatedAt         DateTime @updatedAt
 }
 model Coupon {
   id               String    @id @default(uuid())

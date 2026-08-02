@@ -119,6 +119,22 @@ authRoutes.post('/login', async (req, res) => {
     where: { OR: [{ email: body.identifier.toLowerCase() }, { phone: body.identifier }] }
   });
   if (!user) {
+    // No app account for this identifier at all. If it happens to be an
+    // active admin's email, say so explicitly instead of a generic
+    // "invalid credentials" - an AdminUser has no phone number, so we
+    // can't silently create a matching app account for them here; they
+    // need to register one in-app once, after which either password works
+    // (see the linkedAdmin block below).
+    const admin = await prisma.adminUser.findFirst({
+      where: { email: { equals: body.identifier.toLowerCase(), mode: 'insensitive' }, isActive: true }
+    });
+    if (admin && (await bcrypt.compare(body.password, admin.passwordHash))) {
+      throw new ApiError(
+        404,
+        'No app account exists for this admin email yet. Register in the app once with this email, and your admin password will work for both from then on.',
+        'ADMIN_NEEDS_APP_ACCOUNT'
+      );
+    }
     throw new ApiError(401, 'Invalid email/phone or password', 'INVALID_CREDENTIALS');
   }
 
@@ -126,7 +142,26 @@ authRoutes.post('/login', async (req, res) => {
     throw new ApiError(401, 'Invalid email/phone or password', 'INVALID_CREDENTIALS');
   }
 
-  const ok = await bcrypt.compare(body.password, user.passwordHash);
+  let ok = await bcrypt.compare(body.password, user.passwordHash);
+
+  // This app account's email is also an active admin's email, and the app
+  // password didn't match - fall back to checking the admin panel password
+  // too, so whichever one the person actually remembers works. If it
+  // matches, sync it onto the app account so both stay unified from here
+  // on (next time, the check above succeeds directly).
+  if (!ok) {
+    const linkedAdmin = await prisma.adminUser.findFirst({
+      where: { email: { equals: user.email, mode: 'insensitive' }, isActive: true }
+    });
+    if (linkedAdmin && (await bcrypt.compare(body.password, linkedAdmin.passwordHash))) {
+      ok = true;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: linkedAdmin.passwordHash }
+      });
+    }
+  }
+
   if (!ok) {
     throw new ApiError(401, 'Invalid email/phone or password', 'INVALID_CREDENTIALS');
   }

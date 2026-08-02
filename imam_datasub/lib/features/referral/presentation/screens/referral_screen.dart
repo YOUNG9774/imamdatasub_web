@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/constants/app_dimensions.dart';
+import '../../../../core/error/failures.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/kd_button.dart';
@@ -215,8 +216,9 @@ class ReferralScreen extends ConsumerWidget {
                             label: 'Withdraw',
                             backgroundColor: AppColors.success600,
                             foregroundColor: Colors.white,
-                            onPressed: () =>
-                                _showWithdrawSheet(context, ref, stats.pendingCommission),
+                            onPressed: () => _showWithdrawSheet(
+                                context, ref, stats.pendingCommission,
+                                stats.minWithdrawal),
                           ),
                         ],
                       ),
@@ -256,13 +258,14 @@ class ReferralScreen extends ConsumerWidget {
     );
   }
 
-  void _showWithdrawSheet(
-      BuildContext context, WidgetRef ref, double available) {
+  void _showWithdrawSheet(BuildContext context, WidgetRef ref,
+      double available, double minWithdrawal) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _WithdrawSheet(available: available, ref: ref),
+      builder: (_) => _WithdrawSheet(
+          available: available, ref: ref, minWithdrawal: minWithdrawal),
     );
   }
 }
@@ -346,9 +349,14 @@ class _RefereeTile extends StatelessWidget {
 }
 
 class _WithdrawSheet extends ConsumerStatefulWidget {
-  const _WithdrawSheet({required this.available, required this.ref});
+  const _WithdrawSheet({
+    required this.available,
+    required this.ref,
+    required this.minWithdrawal,
+  });
   final double available;
   final WidgetRef ref;
+  final double minWithdrawal;
 
   @override
   ConsumerState<_WithdrawSheet> createState() => _WithdrawSheetState();
@@ -367,8 +375,11 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
   Future<void> _handleWithdraw() async {
     final amount =
         double.tryParse(_amountController.text.replaceAll(',', ''));
-    if (amount == null || amount < 500) {
-      context.showSnackBar('Minimum withdrawal is ₦500', isError: true);
+    if (amount == null || amount < widget.minWithdrawal) {
+      context.showSnackBar(
+        'Minimum withdrawal is ${AppFormatters.formatAmount(widget.minWithdrawal)}',
+        isError: true,
+      );
       return;
     }
     if (amount > widget.available) {
@@ -388,8 +399,13 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
       Navigator.of(context).pop();
       context.showSnackBar('Commission withdrawn to your wallet!');
     } else {
-      context.showSnackBar('Withdrawal failed. Please try again.',
-          isError: true);
+      final error = ref.read(referralNotifierProvider).error;
+      context.showSnackBar(
+        error is Failure
+            ? error.message
+            : 'Withdrawal failed. Please try again.',
+        isError: true,
+      );
     }
   }
 

@@ -21,6 +21,7 @@ import { authRoutes } from './routes/auth.routes.js';
 import { kycRoutes } from './routes/kyc.routes.js';
 import { legalRoutes } from './routes/legal.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
+import { referralRoutes } from './routes/referral.routes.js';
 import { resultRoutes } from './routes/result.routes.js';
 import { transactionRoutes } from './routes/transaction.routes.js';
 import { userRoutes } from './routes/user.routes.js';
@@ -96,6 +97,7 @@ export function createApp() {
   app.use('/api/wallet', walletRoutes);
   app.use('/api/kyc', kycRoutes);
   app.use('/api/notifications', notificationRoutes);
+  app.use('/api/referral', referralRoutes);
   app.use('/api/result', resultRoutes);
   app.use('/api', vtuRoutes);
   app.use('/api/transactions', transactionRoutes);
