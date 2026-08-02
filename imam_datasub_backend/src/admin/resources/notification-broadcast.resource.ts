@@ -15,7 +15,7 @@ export const notificationBroadcastResource: ResourceWithOptions = {
   options: {
     id: 'NotificationBroadcast',
     navigation: { name: 'Communication', icon: 'Bell' },
-    listProperties: ['title', 'audience', 'recipientCount', 'createdByAdminId', 'createdAt'],
+    listProperties: ['title', 'audience', 'recipientCount', 'createdByAdmin', 'createdAt'],
     showProperties: [
       'id',
       'title',
@@ -24,7 +24,7 @@ export const notificationBroadcastResource: ResourceWithOptions = {
       'audience',
       'targetUserIds',
       'recipientCount',
-      'createdByAdminId',
+      'createdByAdmin',
       'createdAt'
     ],
     // Composing a broadcast is the only write path exposed here — once sent, a
@@ -32,7 +32,7 @@ export const notificationBroadcastResource: ResourceWithOptions = {
     // so it's never edited or deleted after the fact (mirrors Transaction's
     // append-only design).
     editProperties: ['title', 'body', 'type', 'audience', 'targetUserIds'],
-    filterProperties: ['audience', 'createdByAdminId', 'createdAt'],
+    filterProperties: ['audience', 'createdByAdmin', 'createdAt'],
     properties: {
       title: { description: 'Shown as the push/notification title, e.g. "Data prices updated".' },
       body: { description: 'The message body users will see in-app and in the push notification.' },
@@ -49,7 +49,7 @@ export const notificationBroadcastResource: ResourceWithOptions = {
         isVisible: { list: false, filter: false, show: true, edit: true }
       },
       recipientCount: { isDisabled: true },
-      createdByAdminId: { isVisible: { list: true, filter: true, show: true, edit: false } }
+      createdByAdmin: { isVisible: { list: true, filter: true, show: true, edit: false } }
     },
     actions: {
       list: { isAccessible: canSendNotifications },
@@ -63,7 +63,7 @@ export const notificationBroadcastResource: ResourceWithOptions = {
           if (!admin?.id) throw new Error('Missing admin session');
 
           if (request.payload) {
-            request.payload.createdByAdminId = admin.id;
+            request.payload.createdByAdmin = admin.id;
 
             // The edit form exposes targetUserIds as a plain comma-separated string
             // (simplest UI for pasting a handful of IDs) — convert it to the JSON

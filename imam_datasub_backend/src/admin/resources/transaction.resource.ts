@@ -10,11 +10,11 @@ export const transactionResource: ResourceWithOptions = {
   options: {
     id: 'Transaction',
     navigation: { name: 'Ledger', icon: 'List' },
-    listProperties: ['reference', 'type', 'status', 'amountKobo', 'provider', 'userId', 'createdAt'],
+    listProperties: ['reference', 'type', 'status', 'amountKobo', 'provider', 'user', 'createdAt'],
     showProperties: [
       'id',
       'reference',
-      'userId',
+      'user',
       'type',
       'status',
       'amountKobo',
@@ -28,7 +28,7 @@ export const transactionResource: ResourceWithOptions = {
       'createdAt',
       'updatedAt'
     ],
-    filterProperties: ['reference', 'userId', 'type', 'status', 'createdAt'],
+    filterProperties: ['reference', 'user', 'type', 'status', 'createdAt'],
     actions: {
       // The ledger is append-only from the admin panel's perspective — corrections
       // happen via `reverse` (which creates its own audited record), never by editing
@@ -56,7 +56,7 @@ export const transactionResource: ResourceWithOptions = {
           try {
             await refundWallet({
               transactionId: record.params.id as string,
-              userId: record.params.userId as string
+              userId: record.params.user as string
             });
 
             await logAdminAction({

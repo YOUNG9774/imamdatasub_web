@@ -14,13 +14,13 @@ export const couponResource: ResourceWithOptions = {
   options: {
     id: 'Coupon',
     navigation: { name: 'Wallet', icon: 'CreditCard' },
-    listProperties: ['code', 'valueKobo', 'isRedeemed', 'redeemedByUserId', 'redeemedAt', 'createdAt'],
+    listProperties: ['code', 'valueKobo', 'isRedeemed', 'redeemedBy', 'redeemedAt', 'createdAt'],
     showProperties: [
       'id',
       'code',
       'valueKobo',
       'isRedeemed',
-      'redeemedByUserId',
+      'redeemedBy',
       'redeemedAt',
       'createdByAdminId',
       'note',
@@ -33,7 +33,7 @@ export const couponResource: ResourceWithOptions = {
       valueKobo: { description: 'Value in kobo. Example: 50000 = NGN 500.' },
       code: { description: 'Leave blank to auto-generate a random code.' },
       isRedeemed: { isDisabled: true },
-      redeemedByUserId: { isDisabled: true },
+      redeemedBy: { isDisabled: true },
       redeemedAt: { isDisabled: true },
       createdByAdminId: { isVisible: { list: false, filter: false, show: true, edit: false } }
     },

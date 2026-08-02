@@ -7,9 +7,9 @@ export const adminAuditLogResource: ResourceWithOptions = {
   options: {
     id: 'AdminAuditLog',
     navigation: { name: 'Access Control', icon: 'FileText' },
-    listProperties: ['createdAt', 'action', 'targetType', 'targetId', 'adminId'],
-    showProperties: ['id', 'adminId', 'action', 'targetType', 'targetId', 'metadata', 'createdAt'],
-    filterProperties: ['action', 'targetType', 'targetId', 'adminId', 'createdAt'],
+    listProperties: ['createdAt', 'action', 'targetType', 'targetId', 'admin'],
+    showProperties: ['id', 'admin', 'action', 'targetType', 'targetId', 'metadata', 'createdAt'],
+    filterProperties: ['action', 'targetType', 'targetId', 'admin', 'createdAt'],
     sort: { sortBy: 'createdAt', direction: 'desc' },
     actions: {
       // Every write here happens programmatically via logAdminAction — never

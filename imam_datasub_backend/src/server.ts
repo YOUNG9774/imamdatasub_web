@@ -1,3 +1,18 @@
+// Several Prisma models (Transaction, Coupon, DataPlanPricing) use BigInt
+// columns for kobo-denominated amounts, since Postgres's `bigint` type maps
+// to JS BigInt in Prisma. Node's JSON.stringify has no built-in support for
+// BigInt and throws "Do not know how to serialize a BigInt" the moment any
+// response - including AdminJS's own list/show/edit responses - tries to
+// send one. Kobo amounts in this app are nowhere near Number.MAX_SAFE_INTEGER
+// (2^53), so converting to Number here is lossless for any realistic
+// transaction size. Must run before any other module that could trigger a
+// JSON.stringify of a BigInt value, hence it's the very first thing here.
+(BigInt.prototype as unknown as { toJSON: () => number }).toJSON = function toJSON(
+  this: bigint
+) {
+  return Number(this);
+};
+
 import { env } from './config/env.js';
 import { createApp } from './app.js';
 import { prisma } from './lib/prisma.js';
