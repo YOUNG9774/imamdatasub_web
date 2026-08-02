@@ -24,7 +24,19 @@ export const ADMIN_ROOT_PATH = '/admin';
 // through Prisma, since connect-pg-simple needs a raw pg client to manage its
 // own `session` table (auto-created below via createTableIfMissing). This
 // pool is cheap: session reads/writes are infrequent compared to API traffic.
-const sessionPool = new pg.Pool({ connectionString: env.DATABASE_URL });
+//
+// ssl.rejectUnauthorized is explicitly false here because node-postgres does
+// full certificate-chain validation and rejects Supabase's pooler cert with
+// "self-signed certificate in certificate chain" otherwise - this is a
+// known node-postgres/Supabase interaction (see Supabase's own Node.js
+// connection docs), distinct from Prisma's connection to this same
+// DATABASE_URL, which uses its own TLS stack and isn't affected. The
+// connection itself is still encrypted; this only skips validating the CA
+// chain, which is the standard accepted workaround for this combination.
+const sessionPool = new pg.Pool({
+  connectionString: env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 const PgSession = connectPgSimple(session);
 const adminSessionStore = new PgSession({
   pool: sessionPool,
