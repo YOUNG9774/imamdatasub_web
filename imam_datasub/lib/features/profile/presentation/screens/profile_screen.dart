@@ -61,18 +61,21 @@ class ProfileScreen extends ConsumerWidget {
                       subtitle: 'Your personal information',
                       onTap: () => context.push(RouteNames.editProfile),
                     ),
+                    if (hasAdminAccess) ...[
+                      const Divider(height: 1, indent: 72),
+                      _ProfileTile(
+                        icon: Icons.admin_panel_settings_outlined,
+                        title: 'Admin Dashboard',
+                        subtitle: 'Pricing, API balance, notifications',
+                        onTap: () => context.push(RouteNames.adminDashboard),
+                      ),
+                    ],
                     const Divider(height: 1, indent: 72),
                     _ProfileTile(
                       icon: Icons.price_change_outlined,
                       title: 'Pricing',
-                      subtitle: hasAdminAccess
-                          ? 'Manage data selling prices'
-                          : 'View available data plans',
-                      onTap: () => context.push(
-                        hasAdminAccess
-                            ? RouteNames.adminDataPricing
-                            : RouteNames.buyData,
-                      ),
+                      subtitle: 'View available data plans',
+                      onTap: () => context.push(RouteNames.buyData),
                     ),
                     const Divider(height: 1, indent: 72),
                     _ProfileTile(

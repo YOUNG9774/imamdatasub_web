@@ -72,6 +72,101 @@ class DataPriceRow {
   }
 }
 
+class ServicePriceRow {
+  const ServicePriceRow({
+    required this.service,
+    required this.label,
+    required this.providerCost,
+    required this.sellingPrice,
+    required this.isActive,
+  });
+
+  final String service;
+  final String label;
+  final double providerCost;
+  final double? sellingPrice;
+  final bool isActive;
+
+  factory ServicePriceRow.fromJson(Map<String, dynamic> json) {
+    return ServicePriceRow(
+      service: json['service']?.toString() ?? '',
+      label: json['label']?.toString() ?? json['service']?.toString() ?? '',
+      providerCost: _num(json['provider_cost']),
+      sellingPrice: json['selling_price'] == null
+          ? null
+          : _num(json['selling_price']),
+      isActive: json['is_active'] == true,
+    );
+  }
+
+  static double _num(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+}
+
+class ProviderBalanceRow {
+  const ProviderBalanceRow({
+    required this.provider,
+    required this.balance,
+    required this.lastCheckedAt,
+  });
+
+  final String provider;
+  final double balance;
+  final DateTime lastCheckedAt;
+
+  factory ProviderBalanceRow.fromJson(Map<String, dynamic> json) {
+    return ProviderBalanceRow(
+      provider: json['provider']?.toString() ?? '',
+      balance: (json['balance'] as num?)?.toDouble() ??
+          double.tryParse(json['balance']?.toString() ?? '') ??
+          0,
+      lastCheckedAt: DateTime.tryParse(
+              json['last_checked_at']?.toString() ?? '') ??
+          DateTime.now(),
+    );
+  }
+}
+
+class BroadcastEntity {
+  const BroadcastEntity({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.audience,
+    required this.recipientCount,
+    required this.readCount,
+    required this.sentBy,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String title;
+  final String body;
+  final String audience;
+  final int recipientCount;
+  final int readCount;
+  final String sentBy;
+  final DateTime createdAt;
+
+  factory BroadcastEntity.fromJson(Map<String, dynamic> json) {
+    return BroadcastEntity(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      body: json['body']?.toString() ?? '',
+      audience: json['audience']?.toString() ?? 'ALL_USERS',
+      recipientCount:
+          int.tryParse(json['recipient_count']?.toString() ?? '0') ?? 0,
+      readCount: int.tryParse(json['read_count']?.toString() ?? '0') ?? 0,
+      sentBy: json['sent_by']?.toString() ?? '',
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+              DateTime.now(),
+    );
+  }
+}
+
 class AdminPricingRepository {
   const AdminPricingRepository(this._dio);
 
@@ -144,5 +239,64 @@ class AdminPricingRepository {
         'markup_percent': markupPercent,
       },
     );
+  }
+
+  Future<List<ServicePriceRow>> getServicePrices() async {
+    final response = await _dio.get(AppEndpoints.adminServicePrices);
+    final list = (response.data['data'] ?? const []) as List<dynamic>;
+    return list
+        .map((item) =>
+            ServicePriceRow.fromJson(Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
+  Future<void> updateServicePriceRow({
+    required String service,
+    double? sellingPrice,
+    double? providerCost,
+    bool? isActive,
+    bool resetToDefault = false,
+  }) async {
+    await _dio.patch(
+      AppEndpoints.adminServicePrice(service),
+      data: {
+        if (resetToDefault) 'selling_price': null,
+        if (!resetToDefault && sellingPrice != null)
+          'selling_price': sellingPrice,
+        if (providerCost != null) 'provider_cost': providerCost,
+        if (isActive != null) 'is_active': isActive,
+      },
+    );
+  }
+
+  Future<List<ProviderBalanceRow>> getProviderBalances() async {
+    final response = await _dio.get(AppEndpoints.adminProviderBalance);
+    final list = (response.data['data'] ?? const []) as List<dynamic>;
+    return list
+        .map((item) => ProviderBalanceRow.fromJson(
+            Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
+  Future<List<BroadcastEntity>> getBroadcastHistory() async {
+    final response = await _dio.get(AppEndpoints.adminNotificationBroadcast);
+    final list = (response.data['data'] ?? const []) as List<dynamic>;
+    return list
+        .map((item) =>
+            BroadcastEntity.fromJson(Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
+  Future<int> sendBroadcast({
+    required String title,
+    required String body,
+    String audience = 'ALL_USERS',
+  }) async {
+    final response = await _dio.post(
+      AppEndpoints.adminNotificationBroadcast,
+      data: {'title': title, 'body': body, 'audience': audience},
+    );
+    final data = response.data['data'] as Map<String, dynamic>? ?? {};
+    return int.tryParse(data['recipient_count']?.toString() ?? '0') ?? 0;
   }
 }

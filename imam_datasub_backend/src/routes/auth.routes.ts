@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { issueAuthTokens, revokeRefreshToken, rotateRefreshToken } from '../lib/auth-token.js';
-import { koboToNaira } from '../lib/money.js';
+import { publicUser } from '../lib/public-user.js';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import { ApiError } from '../middleware/error.js';
@@ -11,35 +11,6 @@ import { verifyLoginPin } from '../services/login-pin.service.js';
 import { tryProvisionInstantVirtualAccount } from '../services/kyc.service.js';
 
 export const authRoutes = Router();
-
-async function publicUser(user: Awaited<ReturnType<typeof prisma.user.findUniqueOrThrow>>) {
-  const admin = await prisma.adminUser.findFirst({
-    where: {
-      email: { equals: user.email, mode: 'insensitive' },
-      isActive: true
-    },
-    select: { role: true }
-  });
-
-  return {
-    id: user.id,
-    full_name: user.fullName,
-    email: user.email,
-    phone: user.phone,
-    photo_url: user.photoUrl,
-    wallet_balance: koboToNaira(user.walletBalanceKobo),
-    referral_code: user.referralCode,
-    referral_earnings: koboToNaira(user.referralEarningsKobo),
-    kyc_status: user.kycStatus.toLowerCase(),
-    email_verified: user.emailVerified,
-    phone_verified: user.phoneVerified,
-    virtual_account_number: user.virtualAccountNumber,
-    virtual_account_bank: user.virtualAccountBank,
-    is_admin: !!admin,
-    admin_role: admin?.role ?? null,
-    created_at: user.createdAt.toISOString()
-  };
-}
 
 async function authResponse(
   user: Awaited<ReturnType<typeof prisma.user.findUniqueOrThrow>>,

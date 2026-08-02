@@ -1,190 +1,209 @@
-# IMAM DATASUB — Play Store Listing Kit
+﻿# IMAM DATASUB - Play Store Listing Kit
 
-⚠️ **Fix first:** your support email is currently `abdulmhassan02@gmai.com` (missing the "l" in gmail) in `app_config.dart`. Confirm the real address before submitting — it's used below and in your in-app support screens.
+## 1. App Title (30 characters max)
 
----
+Recommended:
 
-## 1. App title (max 30 characters)
-
-```
+```text
 IMAM DATASUB
 ```
 
-If you want a subtitle-style title for better search visibility (still under 30 chars):
-```
+Alternative with keywords, still under 30 characters:
+
+```text
 IMAM DATASUB - Data & Bills
 ```
-(27 characters)
 
----
+## 2. Short Description (80 characters max)
 
-## 2. Short description (max 80 characters)
-
+```text
+Buy data, airtime, pay bills and fund your wallet fast and securely.
 ```
-Buy data, airtime, pay bills & fund your wallet instantly — fast & secure.
+
+## 3. Full Description (4000 characters max)
+
+```text
+IMAM DATASUB is an all-in-one wallet app for buying data, airtime, bill payments, result checker PINs, recharge cards, data cards and other VTU services in Nigeria.
+
+FUND YOUR WALLET
+Fund your wallet through supported payment channels and get transaction updates when your payment is confirmed.
+
+DATA AND AIRTIME
+Buy data and airtime for MTN, Airtel, Glo and 9mobile. Select available plans, view prices and validity, then complete purchases directly from your wallet.
+
+BILLS PAYMENT
+Pay supported cable TV and electricity bills from one simple app.
+
+RESULT CHECKER AND EDUCATION SERVICES
+Purchase WAEC and NECO result checker PINs and supported education service tokens where available.
+
+RECHARGE AND DATA CARDS
+Access recharge card and data card services for personal use, resellers and small businesses.
+
+REFERRALS AND NOTIFICATIONS
+Invite others, track transactions and receive important account, wallet and service notifications.
+
+SECURITY
+IMAM DATASUB supports password login, transaction PIN, optional biometric login, 6-digit login PIN and BVN-based KYC where required. KYC is handled through BVN and bank account verification only. No selfie or camera capture is required.
+
+SUPPORT
+Contact support from inside the app by email or WhatsApp whenever you need help with wallet funding, purchases, failed transactions or account issues.
+
+IMAM DATASUB helps you manage everyday data, airtime, bills and wallet transactions from one secure mobile app.
 ```
-(76 characters)
 
----
+## 4. Category And Tags
 
-## 3. Full description (max 4000 characters)
+Category: Finance
 
-```
-IMAM DATASUB is your all-in-one platform for data, airtime, bill payments, and more — fast, secure, and built around your wallet.
+Suggested tags and keywords: data, airtime, VTU, bills, wallet, MTN, Airtel, Glo, 9mobile, DStv, GOtv, electricity, WAEC, NECO, recharge card, data card.
 
-💳 FUND YOUR WALLET
-Fund your wallet instantly via bank transfer or your dedicated virtual account. Get notified the moment your funding is confirmed.
+## 5. Graphics And Screenshots
 
-📶 DATA & AIRTIME
-Buy data and airtime for all major Nigerian networks — MTN, Airtel, Glo, and 9mobile — at competitive rates, delivered instantly to any phone number.
+Required/recommended assets prepared in `play_store_assets`:
 
-💵 AIRTIME TO CASH
-Convert excess airtime into wallet cash quickly and easily.
+- Feature graphic: `feature_graphic_1024x500.png`
+- Phone screenshots: 8 PNG files, 1080x1920 portrait
+- Alt text file: `ALT_TEXT.md`
 
-📺 CABLE TV SUBSCRIPTIONS
-Renew or subscribe to DStv, GOtv, StarTimes and more without leaving the app.
+Google Play requirements to remember:
 
-⚡ ELECTRICITY BILLS
-Pay your electricity bills (prepaid and postpaid) for supported distribution companies in seconds.
+- Feature graphic: 1024 x 500, JPEG or 24-bit PNG, no alpha.
+- Screenshots: minimum 2, maximum 8 per device type.
+- Screenshot minimum dimension: 320 px, maximum dimension: 3840 px.
+- For better Play promotion eligibility, use at least 4 phone screenshots at 1080 x 1920 portrait.
 
-🎓 JAMB & RESULT CHECKER PINS
-Purchase JAMB ePINs and WAEC/NECO result checker PINs for exams and admissions.
+## 6. Content Rating Questionnaire
 
-💳 RECHARGE & DATA CARDS
-Buy recharge cards and data cards in bulk — great for resellers and business owners.
-
-📢 BULK SMS
-Send bulk SMS campaigns directly from the app.
-
-🎁 REFERRAL PROGRAM
-Invite friends and earn rewards when they join and transact.
-
-🔔 REAL-TIME NOTIFICATIONS
-Get instant, personal notifications for every wallet funding, purchase, and transaction — plus important updates and price-change alerts from our team, when they matter to you.
-
-🔒 SECURITY YOU CAN TRUST
-- Biometric login (fingerprint) for quick, secure access
-- 6-digit login PIN required every time you reopen the app
-- Fast BVN-based identity verification to activate your wallet — no selfie or document upload needed
-- Bank-grade encrypted connections for every transaction
-
-🛟 SUPPORT WHEN YOU NEED IT
-Reach our support team directly via email or WhatsApp from inside the app whenever you have a question or issue.
-
-Download IMAM DATASUB today and take control of your data, bills, and payments — all from one secure wallet.
-```
-(≈1,750 characters — well within the 4000 limit; trim the sections you don't want to lead with if you want it shorter)
-
----
-
-## 4. App category & tags
-
-- **Category:** Finance (this is the correct primary category given wallet + bill payment + KYC — do not list under "Tools" or "Communication," Google will likely re-categorize you anyway if mismatched)
-- **Tags/keywords to include in your listing where allowed:** data, airtime, VTU, bills, wallet, MTN, Airtel, Glo, 9mobile, DStv, GOtv, electricity, JAMB, WAEC, NECO
-
----
-
-## 5. Content rating questionnaire — how to answer
-
-Google's content rating form (IARC) asks about violence, sexual content, gambling, drugs, etc. For this app:
+Recommended answers based on current app behavior:
 
 | Question | Answer |
 |---|---|
 | Violence | No |
 | Sexual content | No |
 | Profanity | No |
-| Drugs/alcohol/tobacco references | No |
+| Drugs, alcohol, tobacco references | No |
 | Simulated gambling | No |
-| **Does the app allow users to purchase digital goods/services with real money?** | **Yes** — data, airtime, bill payments |
-| **Does the app share user location?** | No (you request no location permission) |
-| **Does the app allow users to interact/communicate?** | No public user-to-user chat exists in your feature list — answer No unless you've added one |
+| Real-money purchases of goods/services | Yes - data, airtime, bills and wallet-based VTU services |
+| Shares user location | No |
+| Public user-to-user communication | No |
 
-Expected result: this should land in the lowest rating tier (e.g. "Everyone" / "3+"), since there's no violence, sexual content, or gambling — the only notable flag is real-money purchases, which is standard and expected for a fintech app.
+Expected rating should be a low general audience rating, subject to Google/IARC review.
 
----
+## 7. Target Audience
 
-## 6. Target audience
+Primary audience: 18+
 
-- Select an **adult target age range** (e.g. 18+) as your primary audience, since:
-  - The app requires KYC/BVN verification (financial regulation, not appropriate for minors)
-  - It handles real money and wallets
-- When Play Console asks "Is your app designed for children?" → **No**
+Reason: the app handles wallet transactions, payment records and BVN-based KYC. Select that the app is not designed for children.
 
----
+## 8. Data Safety Form
 
-## 7. Data Safety form — exact answers
+Does the app collect or share user data? Yes.
 
-This is the section Google is strictest about matching to actual behavior. Below is a category-by-category breakdown based on what your code actually collects and does (Prisma schema, KYC service, notification service, permissions).
+### Personal Info
 
-### Does your app collect or share any of the required user data types?
-**Yes**
-
-### Personal info
-| Data type | Collected? | Shared with 3rd party? | Purpose |
+| Data type | Collected | Shared | Purpose |
 |---|---|---|---|
-| Name | Yes | No | Account management, App functionality |
-| Email address | Yes | No | Account management, Account creation/login |
-| Phone number | Yes | No | Account management, App functionality |
+| Name | Yes | No | Account management, app functionality |
+| Email address | Yes | No | Account creation, login, support |
+| Phone number | Yes | No | Account management, transactions, support |
 | User IDs | Yes | No | Account management |
-| Address | No | — | — |
+| Address | No | No | Not collected |
 
-### Financial info
-| Data type | Collected? | Shared with 3rd party? | Purpose |
+### Financial Info
+
+| Data type | Collected | Shared | Purpose |
 |---|---|---|---|
-| User payment info | Yes (wallet balance, transaction records — **not raw card numbers**, those go directly to your payment processor Paystack) | **Yes** — shared with Paystack for payment processing | App functionality |
-| Purchase history | Yes | No | App functionality, Analytics |
-| Credit score / other financial info | Yes — BVN-based identity verification (KYC), confirmed to be a pure form: bank + account number + BVN, submitted to `/kyc/verify-bvn`. **No photo, selfie, or document capture is involved anywhere in this flow.** You store only the **last 4 digits** of BVN, never the full number | **Yes** — full BVN is sent to Paystack for verification; you don't store it | App functionality (fraud prevention/security) |
+| User payment info | Yes | Yes, with payment processor where needed | Wallet funding and payment processing |
+| Purchase history | Yes | No | Transaction history and support |
+| Other financial info | Yes, BVN/bank verification details where required | Yes, with verification/payment provider where needed | KYC, fraud prevention, wallet security |
 
-### Photos or videos
-**Not collected.** The app no longer includes any photo picker, camera access, or image upload anywhere — profile pictures are a generated initials avatar instead. `CAMERA`, `READ_MEDIA_IMAGES`, `READ_EXTERNAL_STORAGE`, and `WRITE_EXTERNAL_STORAGE` permissions have been removed from the manifest entirely, since nothing in the app used them once the photo picker was removed (receipt downloads use app-private sandboxed storage that needs no permission on any Android version).
+Important note: the app should not store full BVN. It should only submit it for verification and store the safe verification status or last digits where required.
 
-### App activity
-| Data type | Collected? | Shared? | Purpose |
+### Photos Or Videos
+
+Not collected for KYC. No selfie capture is required. If profile image upload is fully removed, answer Photos/Videos as not collected. If any profile image picker/upload still exists in your final build, answer Photos as collected for account personalization.
+
+### App Activity
+
+| Data type | Collected | Shared | Purpose |
 |---|---|---|---|
-| App interactions | Yes (transaction/notification history) | No | App functionality, Analytics |
+| App interactions | Yes | No | App functionality, transaction records, notifications |
 
-### Device or other IDs
-| Data type | Collected? | Shared? | Purpose |
+### Device Or Other IDs
+
+| Data type | Collected | Shared | Purpose |
 |---|---|---|---|
-| Device or other IDs | Yes — FCM push notification token | **Yes** — shared with Firebase/Google for delivering push notifications | App functionality |
+| Device or other IDs | Yes, FCM token | Yes, with Firebase/Google for push notifications | Push notification delivery |
 
 ### Location
-**Not collected** — you request no location permission anywhere in the manifest.
 
-### Everything else (Health, Messages, Web browsing, etc.)
-**Not collected.**
+Not collected.
 
----
+### Standard Follow-up Answers
 
-### Standard follow-up questions for each data type you marked "Yes" to
-Google will ask these for each row above — answer consistently:
-- **Is this data processed ephemerally?** → No (you persist it in your database)
-- **Is data collection required or optional?** → Required (can't create a functioning wallet account without name/email/phone; KYC is required before certain wallet limits per your `kycStatus` field)
-- **Is the data encrypted in transit?** → **Yes** (your API is HTTPS-only now, per the network security config we just locked down)
-- **Can users request their data be deleted?** → Yes, if you support account deletion (check `accountStatus: DEACTIVATED/DELETED` in your schema — you already have this) — confirm your in-app account deletion flow actually exists and works before answering Yes here
+- Data encrypted in transit: Yes, app uses HTTPS API endpoints.
+- Data deletion request available: Yes, if the account deactivation/delete flow is working in the app.
+- Data collection required or optional: account data is required; some security/KYC data is required for wallet limits or compliance.
+- Data processed ephemerally: No, most account and transaction data is stored for app functionality, accounting, fraud prevention and support.
 
----
+## 9. Financial Services Declaration
 
-## 8. Financial Services declaration
+Suggested wording:
 
-Since Play Console will likely flag this as a financial app requiring extra review:
-- Be ready to state that payment processing (including BVN verification and card transactions) is handled by **Paystack**, a licensed payment processor — you are not directly holding or processing card data yourself.
-- Have your Terms & Conditions (already live at `/terms`) and Privacy Policy (`/privacy-policy`) ready — Play Console will link to both.
-- If asked whether you provide loans/credit — answer **No** (you're a wallet/bill-payment platform, not a lender).
+```text
+IMAM DATASUB provides wallet-based VTU, data, airtime and bill payment services. The app does not provide loans, credit, investment products, insurance, cryptocurrency services or gambling. Payment processing and verification may be handled by supported licensed third-party providers such as Paystack and telecom/VTU service providers.
+```
 
----
+If asked whether the app provides loans or credit: No.
 
-## 9. Contact details for your Play Console listing
+## 10. Play Console Contact Details
 
-- **Support email:** *(confirm/fix the typo above first)*
-- **Support phone/WhatsApp:** +234 803 567 9448
-- **Privacy Policy URL:** `https://imamdatasubweb-production-4f62.up.railway.app/privacy-policy`
-- **Terms of Service URL:** `https://imamdatasubweb-production-4f62.up.railway.app/terms`
+Support email:
 
----
+```text
+abdulmhassan02@gmail.com
+```
 
-## Before you submit — final checklist
-- [ ] Fix the support email typo (`gmai.com` → confirm correct domain)
-- [ ] Confirm your in-app account deletion flow works, if you answer "Yes" to data-deletion requests
-- [ ] Have 2–8 screenshots ready (phone-size, no need for tablet unless you support tablets)
-- [ ] Feature graphic (1024×500px) for the store listing banner
+Additional support email:
+
+```text
+imam.datasub21@gmail.com
+```
+
+Support WhatsApp/phone:
+
+```text
++234 803 567 9448
+```
+
+Admin WhatsApp:
+
+```text
++234 706 769 3590
+```
+
+Privacy Policy URL:
+
+```text
+https://imamdatasubweb-production-4f62.up.railway.app/privacy-policy
+```
+
+Terms URL:
+
+```text
+https://imamdatasubweb-production-4f62.up.railway.app/terms
+```
+
+## 11. Final Checklist Before Submission
+
+- [ ] Upload app icon: 512 x 512 PNG with alpha, max 1024 KB.
+- [ ] Upload feature graphic: 1024 x 500 PNG/JPEG, no alpha.
+- [ ] Upload at least 4 phone screenshots, ideally all 8 prepared screenshots.
+- [ ] Add privacy policy URL in Play Console.
+- [ ] Confirm the same privacy policy link is available inside the app.
+- [ ] Complete Data Safety form honestly based on the final APK/AAB permissions and behavior.
+- [ ] Complete Content Rating questionnaire.
+- [ ] Complete Financial Services declaration.
+- [ ] Confirm account deletion/deactivation works if you declare data deletion support.
+- [ ] Use a release AAB signed with your upload key for production.

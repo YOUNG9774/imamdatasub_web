@@ -49,6 +49,39 @@ export async function listResultPinPrices() {
   return Promise.all((Object.keys(DEFAULTS) as ExamPinType[]).map((exam) => getResultPinPrice(exam)));
 }
 
+/**
+ * Admin-facing version of listResultPinPrices(). getResultPinPrice() above
+ * deliberately throws SERVICE_INACTIVE when a service is disabled - correct
+ * for the purchase flow (block buying something that's off), but wrong here:
+ * Promise.all([...]) means ONE disabled service would throw the entire admin
+ * list request, making it impossible to ever see (and re-enable) whatever
+ * was just disabled. This reads the raw rows instead and never throws.
+ */
+export async function listServicePricesForAdmin() {
+  const rows = await Promise.all(
+    (Object.keys(DEFAULTS) as ExamPinType[]).map((exam) => {
+      const defaults = DEFAULTS[exam];
+      return prisma.servicePricing.upsert({
+        where: { service: defaults.service },
+        create: {
+          service: defaults.service,
+          label: defaults.label,
+          providerCostKobo: priceToKobo(defaults.price)
+        },
+        update: {}
+      });
+    })
+  );
+
+  return rows.map((row) => ({
+    service: row.service,
+    label: row.label,
+    provider_cost: koboToNaira(row.providerCostKobo),
+    selling_price: row.sellingPriceKobo ? koboToNaira(row.sellingPriceKobo) : null,
+    is_active: row.isActive
+  }));
+}
+
 export async function updateServicePrice(service: string, input: { sellingPrice?: number | null; providerCost?: number; isActive?: boolean }) {
   return prisma.servicePricing.update({
     where: { service },

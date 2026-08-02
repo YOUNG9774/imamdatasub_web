@@ -15,3 +15,18 @@ final adminDataPricesProvider = FutureProvider.autoDispose
     .family<List<DataPriceRow>, NetworkProvider>((ref, network) {
       return ref.read(adminPricingRepositoryProvider).getDataPrices(network);
     });
+
+final adminServicePricesProvider =
+    FutureProvider.autoDispose<List<ServicePriceRow>>((ref) {
+  return ref.read(adminPricingRepositoryProvider).getServicePrices();
+});
+
+final adminProviderBalanceProvider =
+    FutureProvider.autoDispose<List<ProviderBalanceRow>>((ref) {
+  return ref.read(adminPricingRepositoryProvider).getProviderBalances();
+});
+
+final adminBroadcastHistoryProvider =
+    FutureProvider.autoDispose<List<BroadcastEntity>>((ref) {
+  return ref.read(adminPricingRepositoryProvider).getBroadcastHistory();
+});

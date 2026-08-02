@@ -3,6 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma.js';
 import { koboToNaira } from '../lib/money.js';
+import { publicUser } from '../lib/public-user.js';
 import { requireAuth } from '../middleware/auth.js';
 import { ApiError } from '../middleware/error.js';
 import { setPin, verifyPin } from '../services/wallet.service.js';
@@ -38,22 +39,7 @@ userRoutes.get('/profile', async (req, res) => {
     user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } });
   }
 
-  res.json({
-    id: user.id,
-    full_name: user.fullName,
-    email: user.email,
-    phone: user.phone,
-    photo_url: user.photoUrl,
-    wallet_balance: koboToNaira(user.walletBalanceKobo),
-    referral_code: user.referralCode,
-    referral_earnings: koboToNaira(user.referralEarningsKobo),
-    kyc_status: user.kycStatus.toLowerCase(),
-    email_verified: user.emailVerified,
-    phone_verified: user.phoneVerified,
-    virtual_account_number: user.virtualAccountNumber,
-    virtual_account_bank: user.virtualAccountBank,
-    created_at: user.createdAt.toISOString()
-  });
+  res.json(await publicUser(user));
 });
 
 userRoutes.post('/profile/sync', async (req, res) => {

@@ -41,6 +41,10 @@ import '../../features/support/presentation/screens/support_screen.dart';
 import '../../features/kyc/presentation/screens/kyc_screen.dart';
 import '../../features/airtime_to_cash/presentation/screens/airtime_to_cash_screen.dart';
 import '../../features/admin/presentation/screens/admin_data_pricing_screen.dart';
+import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
+import '../../features/admin/presentation/screens/admin_service_pricing_screen.dart';
+import '../../features/admin/presentation/screens/admin_provider_balance_screen.dart';
+import '../../features/admin/presentation/screens/admin_broadcast_screen.dart';
 import '../../features/legal/presentation/screens/legal_document_screen.dart';
 import '../di/injection.dart';
 
@@ -258,8 +262,24 @@ final routerProvider = Provider<GoRouter>((ref) {
                     builder: (_, __) => const SupportScreen(),
                   ),
                   GoRoute(
+                    path: 'admin',
+                    builder: (_, __) => const AdminDashboardScreen(),
+                  ),
+                  GoRoute(
                     path: 'admin/data-pricing',
                     builder: (_, __) => const AdminDataPricingScreen(),
+                  ),
+                  GoRoute(
+                    path: 'admin/service-pricing',
+                    builder: (_, __) => const AdminServicePricingScreen(),
+                  ),
+                  GoRoute(
+                    path: 'admin/provider-balance',
+                    builder: (_, __) => const AdminProviderBalanceScreen(),
+                  ),
+                  GoRoute(
+                    path: 'admin/broadcast',
+                    builder: (_, __) => const AdminBroadcastScreen(),
                   ),
                 ],
               ),

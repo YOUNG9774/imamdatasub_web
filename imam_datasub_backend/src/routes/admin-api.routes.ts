@@ -4,7 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { dataPlanPricingService } from '../services/data-plan-pricing.service.js';
 import { providerService } from '../services/provider.service.js';
 import { sendAdminBroadcast } from '../services/notification.service.js';
-import { listResultPinPrices, updateServicePrice } from '../services/result-pin.service.js';
+import { listServicePricesForAdmin, updateServicePrice } from '../services/result-pin.service.js';
 import { logAdminAction } from '../admin/audit.js';
 import { requireAppAdmin, requireFinanceAdmin } from '../middleware/admin-auth.js';
 
@@ -18,6 +18,24 @@ function routeParam(value: string | string[] | undefined) {
 
 adminApiRoutes.get('/me', (req, res) => {
   res.json({ status: true, data: { admin: req.admin } });
+});
+
+// Mirrors what providerBalanceResource shows in the AdminJS web panel -
+// this is the provider's (Alrahuz) self-reported balance, captured
+// automatically after every purchase (see recordProviderBalance in
+// provider.service.ts). Not a live check against Alrahuz - just the last
+// known value, which is all the provider ever tells us anyway.
+adminApiRoutes.get('/provider-balance', requireFinanceAdmin, async (_req, res) => {
+  const rows = await prisma.providerBalanceStatus.findMany({ orderBy: { provider: 'asc' } });
+  res.json({
+    status: true,
+    data: rows.map((r) => ({
+      provider: r.provider,
+      balance: r.lastKnownBalance,
+      last_checked_at: r.lastCheckedAt.toISOString(),
+      low_balance_alert_sent_at: r.lowBalanceAlertSentAt?.toISOString() ?? null
+    }))
+  });
 });
 
 adminApiRoutes.get('/data-prices', requireFinanceAdmin, async (req, res) => {
@@ -50,7 +68,7 @@ adminApiRoutes.patch('/data-prices/:id', requireFinanceAdmin, async (req, res) =
 
 
 adminApiRoutes.get('/service-prices', requireFinanceAdmin, async (_req, res) => {
-  const rows = await listResultPinPrices();
+  const rows = await listServicePricesForAdmin();
   res.json({ status: true, data: rows });
 });
 
