@@ -4,7 +4,7 @@ import { EFFECTIVE_DATE, PRIVACY_SECTIONS, TERMS_SECTIONS } from '../lib/legal-c
 
 export const legalRoutes = Router();
 
-// Matches imam_datasub/lib/core/config/app_config.dart's supportEmail/supportWhatsApp.
+// Matches imam_datasub/lib/core/config/app_config.dart's supportEmailDisplay/supportWhatsApp.
 // If you change contact details there, update these two constants too.
 const SUPPORT_EMAIL = 'abdulmhassan02@gmail.com / imam.datasub21@gmail.com';
 const SUPPORT_WHATSAPP = '+2348035679448';

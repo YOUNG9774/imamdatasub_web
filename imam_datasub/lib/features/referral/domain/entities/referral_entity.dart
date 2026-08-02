@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../../core/config/app_config.dart';
 
 class ReferralEntity extends Equatable {
   const ReferralEntity({
@@ -35,7 +36,7 @@ class ReferralEntity extends Equatable {
   final bool isEnabled;
 
   String get shareLink =>
-      'https://imamdatasub.com.ng/ref/$referralCode';
+      '${AppConfig.referralLinkBaseUrl}/ref/$referralCode';
 
   factory ReferralEntity.fromJson(Map<String, dynamic> json) {
     final data = json['data'] as Map<String, dynamic>? ?? json;

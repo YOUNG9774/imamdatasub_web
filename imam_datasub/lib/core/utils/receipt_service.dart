@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:printing/printing.dart';
 import 'dart:io';
+import '../config/app_config.dart';
 import '../utils/formatters.dart';
 
 class ReceiptData {
@@ -201,7 +202,7 @@ class ReceiptService {
               pw.SizedBox(height: 4),
               pw.Center(
                 child: pw.Text(
-                  'support@imamdatasub.com.ng',
+                  AppConfig.supportEmail,
                   style: pw.TextStyle(fontSize: 9, color: _neutral500),
                 ),
               ),

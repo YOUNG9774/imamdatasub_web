@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_strings.dart';
@@ -28,6 +29,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   final _referralController = TextEditingController();
   bool _agreedToTerms = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefillReferralCode();
+  }
+
+  /// Picks up the referral code main.dart's _capturePendingReferralCode
+  /// stashed on first launch, if this install came from a /ref/CODE link.
+  /// One-time use - cleared immediately after reading so it doesn't
+  /// resurface if the user backs out and lands on this screen again later
+  /// with a code they've since typed over or deliberately cleared.
+  Future<void> _prefillReferralCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final code = prefs.getString('kd_pending_referral_code');
+    if (code == null || code.isEmpty) return;
+
+    await prefs.remove('kd_pending_referral_code');
+    if (!mounted) return;
+    setState(() => _referralController.text = code);
+  }
 
   @override
   void dispose() {

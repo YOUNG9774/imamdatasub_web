@@ -50,6 +50,11 @@ dependencies:
   hive_flutter: ^1.1.0
   flutter_secure_storage: ^9.2.4
   shared_preferences: ^2.5.3
+  # Reads the Play Install Referrer string after an app install originating
+  # from a /ref/CODE link (see referral.routes.ts server-side, and
+  # main.dart's _capturePendingReferralCode). Android-only by design - iOS
+  # has no equivalent API, calls are guarded accordingly.
+  android_play_install_referrer: ^2.0.0
   path_provider: ^2.1.5
 
   # ── UI / UX ───────────────────────────────────────────────

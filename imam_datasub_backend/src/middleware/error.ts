@@ -57,9 +57,20 @@ export function errorHandler(
     });
   }
 
-  // Handle generic errors
-  const message = error instanceof Error ? error.message : 'Unexpected server error';
+  // Handle generic/unexpected errors. ApiError and ZodError above are
+  // hand-written, safe-to-show messages - this branch is everything else
+  // (a raw Prisma error, a TypeError, a third-party library throwing) and
+  // error.message for those can contain internal details: file paths,
+  // library internals, occasionally fragments of a query or connection
+  // string. That's fine to log (done above) but must never reach the
+  // client directly in production - only a generic message does.
   const statusCode = (error as any)?.statusCode || 500;
+  const message =
+    process.env.NODE_ENV === 'production'
+      ? 'Something went wrong. Please try again.'
+      : error instanceof Error
+        ? error.message
+        : 'Unexpected server error';
 
   return res.status(statusCode).json({
     status: false,

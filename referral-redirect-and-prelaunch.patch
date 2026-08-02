@@ -1,0 +1,308 @@
+diff --git a/imam_datasub/lib/core/config/app_config.dart b/imam_datasub/lib/core/config/app_config.dart
+index 9ec5439..0f6c87a 100644
+--- a/imam_datasub/lib/core/config/app_config.dart
++++ b/imam_datasub/lib/core/config/app_config.dart
+@@ -81,11 +81,28 @@ class AppConfig {
+   // â”€â”€ Support â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   static const String adminWhatsApp = '+2347067693590';
+   static const String supportWhatsApp = '+2348035679448';
+-  static const String supportEmail = 'abdulmhassan02@gmail.com';
++  // Single address - used for the tap-to-email button and anywhere only one
++  // valid mailto: target makes sense.
++  static const String supportEmail = 'imam.datasub21@gmail.com';
++  // Both addresses together, for display-only contexts (privacy policy,
++  // terms) - matches imam_datasub_backend/src/routes/legal.routes.ts's
++  // SUPPORT_EMAIL, which already shows both on the web-hosted versions of
++  // these same pages. Not valid as a mailto: target (the " / " separator
++  // isn't a real address) - use supportEmail above for that.
++  static const String supportEmailDisplay =
++      'abdulmhassan02@gmail.com / imam.datasub21@gmail.com';
+   static const String privacyPolicyUrl =
+       'https://imamdatasubweb-production-4f62.up.railway.app/privacy-policy';
+   static const String termsUrl =
+       'https://imamdatasubweb-production-4f62.up.railway.app/terms';
++  // Base for referral share links (ReferralEntity.shareLink appends /ref/CODE).
++  // Previously pointed at imamdatasub.com.ng, a domain that was never live -
++  // every shared referral link 404'd. No dedicated landing page exists yet for
++  // /ref/:code either, so this alone doesn't make the link fully functional;
++  // it just makes it point somewhere real instead of a dead domain. Update
++  // this to a custom domain later if one gets set up.
++  static const String referralLinkBaseUrl =
++      'https://imamdatasubweb-production-4f62.up.railway.app';
+ 
+   // â”€â”€ Play Integrity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   static const String playIntegrityCloudProjectNumber = '123456789';
+diff --git a/imam_datasub/lib/core/utils/receipt_service.dart b/imam_datasub/lib/core/utils/receipt_service.dart
+index 2a43132..f019ca0 100644
+--- a/imam_datasub/lib/core/utils/receipt_service.dart
++++ b/imam_datasub/lib/core/utils/receipt_service.dart
+@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
+ import 'package:share_plus/share_plus.dart';
+ import 'package:printing/printing.dart';
+ import 'dart:io';
++import '../config/app_config.dart';
+ import '../utils/formatters.dart';
+ 
+ class ReceiptData {
+@@ -201,7 +202,7 @@ class ReceiptService {
+               pw.SizedBox(height: 4),
+               pw.Center(
+                 child: pw.Text(
+-                  'support@imamdatasub.com.ng',
++                  AppConfig.supportEmail,
+                   style: pw.TextStyle(fontSize: 9, color: _neutral500),
+                 ),
+               ),
+diff --git a/imam_datasub/lib/features/auth/presentation/screens/register_screen.dart b/imam_datasub/lib/features/auth/presentation/screens/register_screen.dart
+index 094c920..4f6a023 100644
+--- a/imam_datasub/lib/features/auth/presentation/screens/register_screen.dart
++++ b/imam_datasub/lib/features/auth/presentation/screens/register_screen.dart
+@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
+ import 'package:flutter_animate/flutter_animate.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
++import 'package:shared_preferences/shared_preferences.dart';
+ import '../../../../core/constants/app_colors.dart';
+ import '../../../../core/constants/app_dimensions.dart';
+ import '../../../../core/constants/app_strings.dart';
+@@ -29,6 +30,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+   final _referralController = TextEditingController();
+   bool _agreedToTerms = false;
+ 
++  @override
++  void initState() {
++    super.initState();
++    _prefillReferralCode();
++  }
++
++  /// Picks up the referral code main.dart's _capturePendingReferralCode
++  /// stashed on first launch, if this install came from a /ref/CODE link.
++  /// One-time use - cleared immediately after reading so it doesn't
++  /// resurface if the user backs out and lands on this screen again later
++  /// with a code they've since typed over or deliberately cleared.
++  Future<void> _prefillReferralCode() async {
++    final prefs = await SharedPreferences.getInstance();
++    final code = prefs.getString('kd_pending_referral_code');
++    if (code == null || code.isEmpty) return;
++
++    await prefs.remove('kd_pending_referral_code');
++    if (!mounted) return;
++    setState(() => _referralController.text = code);
++  }
++
+   @override
+   void dispose() {
+     _nameController.dispose();
+diff --git a/imam_datasub/lib/features/legal/presentation/screens/legal_document_screen.dart b/imam_datasub/lib/features/legal/presentation/screens/legal_document_screen.dart
+index a150253..97d2217 100644
+--- a/imam_datasub/lib/features/legal/presentation/screens/legal_document_screen.dart
++++ b/imam_datasub/lib/features/legal/presentation/screens/legal_document_screen.dart
+@@ -43,7 +43,7 @@ class LegalDocumentScreen extends StatelessWidget {
+             ...sections.map((section) => _LegalSection(section: section)),
+             const SizedBox(height: 12),
+             Text(
+-              'Contact: ${AppConfig.supportEmail} | WhatsApp: ${AppConfig.supportWhatsApp}',
++              'Contact: ${AppConfig.supportEmailDisplay} | WhatsApp: ${AppConfig.supportWhatsApp}',
+               style: context.textTheme.bodyMedium?.copyWith(
+                 fontWeight: FontWeight.w700,
+               ),
+diff --git a/imam_datasub/lib/features/referral/domain/entities/referral_entity.dart b/imam_datasub/lib/features/referral/domain/entities/referral_entity.dart
+index fd755b7..1e977e0 100644
+--- a/imam_datasub/lib/features/referral/domain/entities/referral_entity.dart
++++ b/imam_datasub/lib/features/referral/domain/entities/referral_entity.dart
+@@ -1,4 +1,5 @@
+ import 'package:equatable/equatable.dart';
++import '../../../../core/config/app_config.dart';
+ 
+ class ReferralEntity extends Equatable {
+   const ReferralEntity({
+@@ -35,7 +36,7 @@ class ReferralEntity extends Equatable {
+   final bool isEnabled;
+ 
+   String get shareLink =>
+-      'https://imamdatasub.com.ng/ref/$referralCode';
++      '${AppConfig.referralLinkBaseUrl}/ref/$referralCode';
+ 
+   factory ReferralEntity.fromJson(Map<String, dynamic> json) {
+     final data = json['data'] as Map<String, dynamic>? ?? json;
+diff --git a/imam_datasub/lib/main.dart b/imam_datasub/lib/main.dart
+index 599ccd1..e28bce6 100644
+--- a/imam_datasub/lib/main.dart
++++ b/imam_datasub/lib/main.dart
+@@ -1,4 +1,6 @@
+ import 'dart:async';
++import 'dart:io';
++import 'package:android_play_install_referrer/android_play_install_referrer.dart';
+ import 'package:firebase_core/firebase_core.dart';
+ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+ import 'package:flutter/foundation.dart';
+@@ -11,6 +13,34 @@ import 'core/config/firebase_options.dart';
+ import 'core/di/injection.dart';
+ import 'core/utils/logger.dart';
+ 
++/// Key referral_screen.dart's registration flow (see register_screen.dart's
++/// initState) reads and clears - see referral-link.routes.ts's GET /ref/:code
++/// server-side for where the referrer string this parses actually comes from.
++const _pendingReferralCodeKey = 'kd_pending_referral_code';
++
++/// Best-effort: reads the Play Install Referrer string, set only when this
++/// install originated from a `/ref/CODE` link (see referral-link.routes.ts),
++/// and stashes the code for register_screen.dart to pick up. Android-only -
++/// iOS has no equivalent API. Must never throw or block startup: this plugin
++/// throws if Play Services are unavailable, and per its own docs, referrer
++/// data straight up isn't available for debug/sideloaded builds - only real
++/// Play Store installs (including internal/closed testing tracks).
++Future<void> _capturePendingReferralCode(SharedPreferences prefs) async {
++  if (!Platform.isAndroid) return;
++  try {
++    final details = await AndroidPlayInstallReferrer.installReferrer;
++    final referrer = details.installReferrer;
++    if (referrer == null || referrer.isEmpty) return;
++
++    final code = Uri.splitQueryString(referrer)['ref_code'];
++    if (code != null && code.isNotEmpty) {
++      await prefs.setString(_pendingReferralCodeKey, code);
++    }
++  } catch (error, stack) {
++    appLogger.w('Install referrer read failed (non-fatal)', error: error, stackTrace: stack);
++  }
++}
++
+ void main() {
+   var firebaseReady = false;
+ 
+@@ -80,6 +110,10 @@ void main() {
+       if (prefs.getBool(hasRunBeforeKey) != true) {
+         await container.read(secureStorageProvider).clearAll();
+         await prefs.setBool(hasRunBeforeKey, true);
++        // Only meaningful on a genuinely fresh install - the referrer is tied
++        // to install time, so there's nothing to gain (and no harm) in
++        // skipping this on later launches.
++        await _capturePendingReferralCode(prefs);
+       }
+ 
+       final hive = container.read(hiveStorageProvider);
+diff --git a/imam_datasub/pubspec.yaml b/imam_datasub/pubspec.yaml
+index 47e438c..daed6c7 100644
+--- a/imam_datasub/pubspec.yaml
++++ b/imam_datasub/pubspec.yaml
+@@ -50,6 +50,11 @@ dependencies:
+   hive_flutter: ^1.1.0
+   flutter_secure_storage: ^9.2.4
+   shared_preferences: ^2.5.3
++  # Reads the Play Install Referrer string after an app install originating
++  # from a /ref/CODE link (see referral.routes.ts server-side, and
++  # main.dart's _capturePendingReferralCode). Android-only by design - iOS
++  # has no equivalent API, calls are guarded accordingly.
++  android_play_install_referrer: ^2.0.0
+   path_provider: ^2.1.5
+ 
+   # ── UI / UX ───────────────────────────────────────────────
+diff --git a/imam_datasub_backend/src/app.ts b/imam_datasub_backend/src/app.ts
+index bb4e8d8..f00a7c4 100644
+--- a/imam_datasub_backend/src/app.ts
++++ b/imam_datasub_backend/src/app.ts
+@@ -22,6 +22,7 @@ import { kycRoutes } from './routes/kyc.routes.js';
+ import { legalRoutes } from './routes/legal.routes.js';
+ import { notificationRoutes } from './routes/notification.routes.js';
+ import { referralRoutes } from './routes/referral.routes.js';
++import { referralLinkRoutes } from './routes/referral-link.routes.js';
+ import { resultRoutes } from './routes/result.routes.js';
+ import { transactionRoutes } from './routes/transaction.routes.js';
+ import { userRoutes } from './routes/user.routes.js';
+@@ -82,6 +83,7 @@ export function createApp() {
+   // headers) but before the rate limiter below, so a burst of App/Play Store
+   // reviewers or crawlers hitting these plain HTML pages can never get 429'd.
+   app.use(legalRoutes);
++  app.use('/ref', referralLinkRoutes);
+ 
+   app.use(rateLimit({ windowMs: 60_000, limit: 120 }));
+ 
+diff --git a/imam_datasub_backend/src/middleware/error.ts b/imam_datasub_backend/src/middleware/error.ts
+index b5e9c13..28096ab 100644
+--- a/imam_datasub_backend/src/middleware/error.ts
++++ b/imam_datasub_backend/src/middleware/error.ts
+@@ -57,9 +57,20 @@ export function errorHandler(
+     });
+   }
+ 
+-  // Handle generic errors
+-  const message = error instanceof Error ? error.message : 'Unexpected server error';
++  // Handle generic/unexpected errors. ApiError and ZodError above are
++  // hand-written, safe-to-show messages - this branch is everything else
++  // (a raw Prisma error, a TypeError, a third-party library throwing) and
++  // error.message for those can contain internal details: file paths,
++  // library internals, occasionally fragments of a query or connection
++  // string. That's fine to log (done above) but must never reach the
++  // client directly in production - only a generic message does.
+   const statusCode = (error as any)?.statusCode || 500;
++  const message =
++    process.env.NODE_ENV === 'production'
++      ? 'Something went wrong. Please try again.'
++      : error instanceof Error
++        ? error.message
++        : 'Unexpected server error';
+ 
+   return res.status(statusCode).json({
+     status: false,
+diff --git a/imam_datasub_backend/src/routes/legal.routes.ts b/imam_datasub_backend/src/routes/legal.routes.ts
+index 3933812..9ead99a 100644
+--- a/imam_datasub_backend/src/routes/legal.routes.ts
++++ b/imam_datasub_backend/src/routes/legal.routes.ts
+@@ -4,7 +4,7 @@ import { EFFECTIVE_DATE, PRIVACY_SECTIONS, TERMS_SECTIONS } from '../lib/legal-c
+ 
+ export const legalRoutes = Router();
+ 
+-// Matches imam_datasub/lib/core/config/app_config.dart's supportEmail/supportWhatsApp.
++// Matches imam_datasub/lib/core/config/app_config.dart's supportEmailDisplay/supportWhatsApp.
+ // If you change contact details there, update these two constants too.
+ const SUPPORT_EMAIL = 'abdulmhassan02@gmail.com / imam.datasub21@gmail.com';
+ const SUPPORT_WHATSAPP = '+2348035679448';
+diff --git a/imam_datasub_backend/src/routes/referral-link.routes.ts b/imam_datasub_backend/src/routes/referral-link.routes.ts
+new file mode 100644
+index 0000000..9e71424
+--- /dev/null
++++ b/imam_datasub_backend/src/routes/referral-link.routes.ts
+@@ -0,0 +1,42 @@
++import { Router } from 'express';
++import { prisma } from '../lib/prisma.js';
++
++export const referralLinkRoutes = Router();
++
++// Android application ID - see imam_datasub/android/app/build.gradle's
++// applicationId. Update this alongside that if it ever changes.
++const PLAY_STORE_PACKAGE_ID = 'com.imamdatasub.app';
++
++/**
++ * Entry point for referral share links (ReferralEntity.shareLink in the
++ * Flutter app builds these as {referralLinkBaseUrl}/ref/CODE). Redirects to
++ * the Play Store listing with a `referrer` param carrying the code -
++ * Google Play's Install Referrer API delivers that string back to the app
++ * after install, and main.dart's _capturePendingReferralCode reads it so
++ * register_screen.dart can pre-fill it automatically.
++ *
++ * Per Google's own docs, this attribution path only actually works for
++ * installs that go through the real Play Store (including internal/closed
++ * testing tracks) - it silently does nothing for sideloaded/debug builds,
++ * which is a Play Store platform limitation, not something fixable here.
++ *
++ * The code is validated so a mistyped/expired link doesn't silently carry
++ * garbage into an install - invalid codes redirect to the Play Store with
++ * no referrer at all rather than a broken one.
++ */
++referralLinkRoutes.get('/:code', async (req, res) => {
++  const code = req.params.code.trim();
++
++  const referrer = await prisma.user
++    .findUnique({ where: { referralCode: code }, select: { id: true } })
++    .then((user: { id: string } | null) => (user ? `ref_code=${encodeURIComponent(code)}` : null))
++    .catch(() => null); // A DB hiccup here should never break the redirect itself.
++
++  const playStoreUrl = new URL('https://play.google.com/store/apps/details');
++  playStoreUrl.searchParams.set('id', PLAY_STORE_PACKAGE_ID);
++  if (referrer) {
++    playStoreUrl.searchParams.set('referrer', referrer);
++  }
++
++  res.redirect(302, playStoreUrl.toString());
++});

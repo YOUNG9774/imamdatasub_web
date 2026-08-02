@@ -22,6 +22,7 @@ import { kycRoutes } from './routes/kyc.routes.js';
 import { legalRoutes } from './routes/legal.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
 import { referralRoutes } from './routes/referral.routes.js';
+import { referralLinkRoutes } from './routes/referral-link.routes.js';
 import { resultRoutes } from './routes/result.routes.js';
 import { transactionRoutes } from './routes/transaction.routes.js';
 import { userRoutes } from './routes/user.routes.js';
@@ -82,6 +83,7 @@ export function createApp() {
   // headers) but before the rate limiter below, so a burst of App/Play Store
   // reviewers or crawlers hitting these plain HTML pages can never get 429'd.
   app.use(legalRoutes);
+  app.use('/ref', referralLinkRoutes);
 
   app.use(rateLimit({ windowMs: 60_000, limit: 120 }));
 

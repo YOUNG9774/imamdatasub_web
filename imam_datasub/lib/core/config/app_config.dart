@@ -81,11 +81,28 @@ class AppConfig {
   // â”€â”€ Support â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static const String adminWhatsApp = '+2347067693590';
   static const String supportWhatsApp = '+2348035679448';
-  static const String supportEmail = 'abdulmhassan02@gmail.com';
+  // Single address - used for the tap-to-email button and anywhere only one
+  // valid mailto: target makes sense.
+  static const String supportEmail = 'imam.datasub21@gmail.com';
+  // Both addresses together, for display-only contexts (privacy policy,
+  // terms) - matches imam_datasub_backend/src/routes/legal.routes.ts's
+  // SUPPORT_EMAIL, which already shows both on the web-hosted versions of
+  // these same pages. Not valid as a mailto: target (the " / " separator
+  // isn't a real address) - use supportEmail above for that.
+  static const String supportEmailDisplay =
+      'abdulmhassan02@gmail.com / imam.datasub21@gmail.com';
   static const String privacyPolicyUrl =
       'https://imamdatasubweb-production-4f62.up.railway.app/privacy-policy';
   static const String termsUrl =
       'https://imamdatasubweb-production-4f62.up.railway.app/terms';
+  // Base for referral share links (ReferralEntity.shareLink appends /ref/CODE).
+  // Previously pointed at imamdatasub.com.ng, a domain that was never live -
+  // every shared referral link 404'd. No dedicated landing page exists yet for
+  // /ref/:code either, so this alone doesn't make the link fully functional;
+  // it just makes it point somewhere real instead of a dead domain. Update
+  // this to a custom domain later if one gets set up.
+  static const String referralLinkBaseUrl =
+      'https://imamdatasubweb-production-4f62.up.railway.app';
 
   // â”€â”€ Play Integrity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   static const String playIntegrityCloudProjectNumber = '123456789';
