@@ -25,17 +25,31 @@ export const ADMIN_ROOT_PATH = '/admin';
 // own `session` table (auto-created below via createTableIfMissing). This
 // pool is cheap: session reads/writes are infrequent compared to API traffic.
 //
-// ssl.rejectUnauthorized is explicitly false here because node-postgres does
-// full certificate-chain validation and rejects Supabase's pooler cert with
-// "self-signed certificate in certificate chain" otherwise - this is a
-// known node-postgres/Supabase interaction (see Supabase's own Node.js
-// connection docs), distinct from Prisma's connection to this same
-// DATABASE_URL, which uses its own TLS stack and isn't affected. The
-// connection itself is still encrypted; this only skips validating the CA
-// chain, which is the standard accepted workaround for this combination.
+// IMPORTANT: we rewrite `sslmode` to `no-verify` directly in the connection
+// string rather than passing a separate `ssl: { rejectUnauthorized: false }`
+// config object. Passing both `connectionString` and `ssl` together looks
+// like it should work, but node-postgres's ConnectionParameters does:
+//   config = Object.assign({}, config, parse(config.connectionString))
+// - which re-parses the connection string and merges the result IN LAST,
+// silently clobbering any explicit `ssl` property with whatever `sslmode`
+// in the URL parses to. Our DATABASE_URL carries `sslmode=require`, which
+// pg-connection-string treats as full certificate-chain verification and
+// rejects Supabase's pooler cert with "self-signed certificate in
+// certificate chain". Putting `sslmode=no-verify` in the string itself
+// means pg-connection-string sets `rejectUnauthorized: false` inside the
+// very object that wins the merge, so it actually takes effect. Prisma's
+// connection to this same DATABASE_URL is unaffected since it uses its own
+// TLS stack. The connection itself is still encrypted; this only skips
+// validating the CA chain, which is the standard accepted workaround for
+// this node-postgres/Supabase combination.
+function withNoVerifySsl(connectionString: string): string {
+  const url = new URL(connectionString);
+  url.searchParams.set('sslmode', 'no-verify');
+  return url.toString();
+}
+
 const sessionPool = new pg.Pool({
-  connectionString: env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  connectionString: withNoVerifySsl(env.DATABASE_URL)
 });
 const PgSession = connectPgSimple(session);
 const adminSessionStore = new PgSession({
