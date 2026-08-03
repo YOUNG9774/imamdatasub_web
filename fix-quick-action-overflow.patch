@@ -1,0 +1,144 @@
+diff --git a/imam_datasub/lib/shared/widgets/quick_action_grid.dart b/imam_datasub/lib/shared/widgets/quick_action_grid.dart
+index 0d2e5b5..1f44bb7 100644
+--- a/imam_datasub/lib/shared/widgets/quick_action_grid.dart
++++ b/imam_datasub/lib/shared/widgets/quick_action_grid.dart
+@@ -40,7 +40,7 @@ class QuickActionGrid extends StatelessWidget {
+       ),
+       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+         crossAxisCount: crossAxisCount,
+-        childAspectRatio: 0.85,
++        childAspectRatio: 0.75,
+         crossAxisSpacing: 8,
+         mainAxisSpacing: 12,
+       ),
+@@ -63,69 +63,73 @@ class _QuickActionItem extends StatelessWidget {
+   Widget build(BuildContext context) {
+     return GestureDetector(
+       onTap: action.onTap,
+-      child: Column(
+-        mainAxisSize: MainAxisSize.min,
+-        children: [
+-          Stack(
+-            clipBehavior: Clip.none,
+-            children: [
+-              Container(
+-                width: AppDimensions.quickActionContainerSize,
+-                height: AppDimensions.quickActionContainerSize,
+-                decoration: BoxDecoration(
+-                  color: action.backgroundColor,
+-                  borderRadius: BorderRadius.circular(16),
+-                  boxShadow: [
+-                    BoxShadow(
+-                      color: action.backgroundColor.withValues(alpha: 0.3),
+-                      blurRadius: 8,
+-                      offset: const Offset(0, 4),
++      child: FittedBox(
++        fit: BoxFit.scaleDown,
++        child: Column(
++          mainAxisSize: MainAxisSize.min,
++          children: [
++            Stack(
++              clipBehavior: Clip.none,
++              children: [
++                Container(
++                  width: AppDimensions.quickActionContainerSize,
++                  height: AppDimensions.quickActionContainerSize,
++                  decoration: BoxDecoration(
++                    color: action.backgroundColor,
++                    borderRadius: BorderRadius.circular(16),
++                    boxShadow: [
++                      BoxShadow(
++                        color:
++                            action.backgroundColor.withValues(alpha: 0.3),
++                        blurRadius: 8,
++                        offset: const Offset(0, 4),
++                      ),
++                    ],
++                  ),
++                  child: Center(
++                    child: Icon(
++                      action.icon,
++                      color: action.iconColor,
++                      size: AppDimensions.quickActionIconSize,
+                     ),
+-                  ],
+-                ),
+-                child: Center(
+-                  child: Icon(
+-                    action.icon,
+-                    color: action.iconColor,
+-                    size: AppDimensions.quickActionIconSize,
+                   ),
+                 ),
+-              ),
+-              if (action.badge != null)
+-                Positioned(
+-                  top: -4,
+-                  right: -4,
+-                  child: Container(
+-                    padding: const EdgeInsets.symmetric(
+-                        horizontal: 5, vertical: 2),
+-                    decoration: BoxDecoration(
+-                      color: Colors.red,
+-                      borderRadius: BorderRadius.circular(8),
+-                    ),
+-                    child: Text(
+-                      action.badge!,
+-                      style: const TextStyle(
+-                        color: Colors.white,
+-                        fontSize: 9,
+-                        fontWeight: FontWeight.w700,
++                if (action.badge != null)
++                  Positioned(
++                    top: -4,
++                    right: -4,
++                    child: Container(
++                      padding: const EdgeInsets.symmetric(
++                          horizontal: 5, vertical: 2),
++                      decoration: BoxDecoration(
++                        color: Colors.red,
++                        borderRadius: BorderRadius.circular(8),
++                      ),
++                      child: Text(
++                        action.badge!,
++                        style: const TextStyle(
++                          color: Colors.white,
++                          fontSize: 9,
++                          fontWeight: FontWeight.w700,
++                        ),
+                       ),
+                     ),
+                   ),
+-                ),
+-            ],
+-          ),
+-          const SizedBox(height: 6),
+-          Text(
+-            action.label,
+-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+-                  fontWeight: FontWeight.w500,
+-                  height: 1.2,
+-                ),
+-            textAlign: TextAlign.center,
+-            maxLines: 2,
+-            overflow: TextOverflow.ellipsis,
+-          ),
+-        ],
++              ],
++            ),
++            const SizedBox(height: 6),
++            Text(
++              action.label,
++              style: Theme.of(context).textTheme.labelSmall?.copyWith(
++                    fontWeight: FontWeight.w500,
++                    height: 1.2,
++                  ),
++              textAlign: TextAlign.center,
++              maxLines: 2,
++              overflow: TextOverflow.ellipsis,
++            ),
++          ],
++        ),
+       ),
+     )
+         .animate(delay: Duration(milliseconds: index * 50))
