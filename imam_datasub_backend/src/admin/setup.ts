@@ -6,7 +6,7 @@ import pg from 'pg';
 import { Database, Resource } from '@adminjs/prisma';
 import { env } from '../config/env.js';
 import { authenticateAdmin } from './auth.js';
-import { componentLoader } from './component-loader.js';
+import { componentLoader, Components } from './component-loader.js';
 import { userResource } from './resources/user.resource.js';
 import { transactionResource } from './resources/transaction.resource.js';
 import { adminUserResource } from './resources/admin-user.resource.js';
@@ -65,6 +65,9 @@ export async function buildAdminRouter() {
   const admin = new AdminJS({
     rootPath: ADMIN_ROOT_PATH,
     componentLoader,
+    dashboard: {
+      component: Components.Dashboard
+    },
     branding: {
       companyName: 'IMAM DATASUB',
       logo: '/branding/logo.png',
