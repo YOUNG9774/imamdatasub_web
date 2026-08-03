@@ -156,30 +156,6 @@ class WalletRepositoryImpl implements WalletRepository {
   }
 
   @override
-  Future<Either<Failure, void>> transfer({
-    required String recipientIdentifier,
-    required double amount,
-    required String pin,
-  }) async {
-    if (!await _networkInfo.isConnected) {
-      return const Left(NetworkFailure());
-    }
-    try {
-      await _remote.transfer(
-        recipientIdentifier: recipientIdentifier,
-        amount: amount,
-        pin: pin,
-      );
-      await _hive.remove(_cacheKey);
-      return const Right(null);
-    } on AppException catch (e) {
-      return Left(ErrorHandler.exceptionToFailure(e));
-    } catch (e) {
-      return Left(UnknownFailure(message: e.toString()));
-    }
-  }
-
-  @override
   Future<Either<Failure, void>> requestWithdrawal({
     required double amount,
     required String bankAccountNumber,

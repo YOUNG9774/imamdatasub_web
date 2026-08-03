@@ -83,20 +83,6 @@ class WalletNotifier extends StateNotifier<AsyncValue<WalletEntity>> {
     return result;
   }
 
-  Future<Either<Failure, void>> transfer({
-    required String recipientIdentifier,
-    required double amount,
-    required String pin,
-  }) async {
-    final result = await _repository.transfer(
-      recipientIdentifier: recipientIdentifier,
-      amount: amount,
-      pin: pin,
-    );
-    result.fold((_) {}, (_) => refresh());
-    return result;
-  }
-
   @override
   void dispose() {
     _pollTimer?.cancel();

@@ -18,11 +18,6 @@ abstract class WalletRepository {
   Future<Either<Failure, Map<String, dynamic>>> verifyFunding({
     required String reference,
   });
-  Future<Either<Failure, void>> transfer({
-    required String recipientIdentifier,
-    required double amount,
-    required String pin,
-  });
   Future<Either<Failure, void>> requestWithdrawal({
     required double amount,
     required String bankAccountNumber,

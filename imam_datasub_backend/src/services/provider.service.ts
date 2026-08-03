@@ -227,6 +227,10 @@ export class ProviderService {
 
   async refreshBalance() {
     if (env.MOCK_PROVIDER) {
+      // In mock mode there's no real balance to fetch, so this intentionally
+      // stays at 0 and only bumps lastCheckedAt. If the admin dashboard is
+      // showing NGN 0 and "Refresh" doesn't change it, MOCK_PROVIDER is on -
+      // see the production warning logged at startup in server.ts.
       return prisma.providerBalanceStatus.upsert({
         where: { provider: 'alrahuz' },
         create: { provider: 'alrahuz', lastKnownBalance: 0 },
@@ -518,7 +522,20 @@ export class ProviderService {
       url.searchParams.set('network', String(networkId));
     }
 
-    const response = await fetch(url, { headers: this.headers() });
+    // Without an explicit timeout, a slow/hanging Alrahuz response used to
+    // stall this request (and everyone else's, since getAllDataPlans() waits
+    // on it before the cache is populated) for however long Node's default
+    // socket timeout is. Capped at 8s: comfortably more than a normal
+    // response, short enough that a genuinely stuck provider fails fast and
+    // falls back to the static plan snapshot below instead of leaving the
+    // user staring at a spinner.
+    let response: Response;
+    try {
+      response = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(8000) });
+    } catch (err) {
+      console.error(`[provider] ${network} plans endpoint timed out or failed for ${url.toString()}:`, err);
+      return [];
+    }
     if (!response.ok) {
       console.error(`[provider] ${network} plans endpoint returned HTTP ${response.status} for ${url.toString()}`);
       return [];

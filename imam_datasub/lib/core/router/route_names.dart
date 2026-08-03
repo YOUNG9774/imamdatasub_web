@@ -43,7 +43,6 @@ abstract class RouteNames {
   // ── Wallet ────────────────────────────────────────────────
   static const wallet = '/home/dashboard/wallet';
   static const fundWallet = '/home/dashboard/wallet/fund';
-  static const walletTransfer = '/home/dashboard/wallet/transfer';
   static const virtualAccount = '/home/dashboard/wallet/virtual-account';
 
   // ── Transaction detail ────────────────────────────────────

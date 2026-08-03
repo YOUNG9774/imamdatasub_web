@@ -35,7 +35,6 @@ class AppEndpoints {
   static String get fundWalletDynamic => '$_base/wallet/fund/dynamic';
   static String get redeemCoupon => '$_base/wallet/coupon/redeem';
   static String get fundWalletVerify => '$_base/wallet/fund/verify';
-  static String get walletTransfer => '$_base/wallet/transfer';
   static String get virtualAccount => '$_base/wallet/virtual-account';
   static String get withdrawalRequest => '$_base/wallet/withdraw';
 

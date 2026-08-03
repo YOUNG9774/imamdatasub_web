@@ -202,7 +202,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ref.read(balanceVisibilityProvider.notifier).state =
                             !balanceHidden,
                     onFund: () => context.push(RouteNames.fundWallet),
-                    onTransfer: () => context.push(RouteNames.walletTransfer),
                   ),
                   data: (wallet) => WalletCard(
                     balance: wallet.totalBalance,
@@ -213,7 +212,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ref.read(balanceVisibilityProvider.notifier).state =
                             !balanceHidden,
                     onFund: () => context.push(RouteNames.fundWallet),
-                    onTransfer: () => context.push(RouteNames.walletTransfer),
                   ),
                 ),
 

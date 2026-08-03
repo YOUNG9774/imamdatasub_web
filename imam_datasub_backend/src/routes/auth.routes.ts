@@ -12,6 +12,12 @@ import { tryProvisionInstantVirtualAccount } from '../services/kyc.service.js';
 
 export const authRoutes = Router();
 
+// Mirrors the lockout already used for the transaction PIN and login PIN
+// (see login-pin.service.ts / wallet.service.ts verifyPin) - previously the
+// account password itself had no per-account brute-force protection at all.
+const MAX_PASSWORD_FAILURES = 5;
+const PASSWORD_LOCKOUT_MINUTES = 30;
+
 async function authResponse(
   user: Awaited<ReturnType<typeof prisma.user.findUniqueOrThrow>>,
   tokens: { accessToken: string; refreshToken: string; expiresIn: number }
@@ -113,6 +119,16 @@ authRoutes.post('/login', async (req, res) => {
     throw new ApiError(401, 'Invalid email/phone or password', 'INVALID_CREDENTIALS');
   }
 
+  // Checked before comparing the password so a locked account fails fast
+  // (and consistently) regardless of what password is supplied.
+  if (user.passwordLockedUntil && user.passwordLockedUntil > new Date()) {
+    throw new ApiError(
+      423,
+      'Too many failed login attempts. Try again in a bit, or reset your password.',
+      'PASSWORD_LOCKED'
+    );
+  }
+
   let ok = await bcrypt.compare(body.password, user.passwordHash);
 
   // This app account's email is also an active admin's email, and the app
@@ -134,7 +150,27 @@ authRoutes.post('/login', async (req, res) => {
   }
 
   if (!ok) {
+    const failures = user.passwordFailures + 1;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordFailures: failures,
+        passwordLockedUntil:
+          failures >= MAX_PASSWORD_FAILURES
+            ? new Date(Date.now() + PASSWORD_LOCKOUT_MINUTES * 60 * 1000)
+            : null
+      }
+    });
     throw new ApiError(401, 'Invalid email/phone or password', 'INVALID_CREDENTIALS');
+  }
+
+  // Successful password - clear any prior failure count/lockout so it
+  // doesn't linger and affect a future legitimate attempt.
+  if (user.passwordFailures > 0 || user.passwordLockedUntil) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordFailures: 0, passwordLockedUntil: null }
+    });
   }
 
   if (user.accountStatus === 'DEACTIVATED') {

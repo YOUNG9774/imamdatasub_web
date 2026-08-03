@@ -92,6 +92,8 @@ model User {
   loginPinHash         String?
   loginPinFailures     Int            @default(0)
   loginPinLockedUntil  DateTime?
+  passwordFailures     Int            @default(0)
+  passwordLockedUntil  DateTime?
   virtualAccountNumber String?
   virtualAccountBank   String?
   paystackCustomerCode String?

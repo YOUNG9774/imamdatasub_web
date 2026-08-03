@@ -133,10 +133,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                         path: 'fund',
                         builder: (_, __) => const FundWalletScreen(),
                       ),
-                      GoRoute(
-                        path: 'transfer',
-                        builder: (_, __) => const WalletTransferScreen(),
-                      ),
                     ],
                   ),
                 ],

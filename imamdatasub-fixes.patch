@@ -1,0 +1,886 @@
+diff --git a/imam_datasub/lib/core/config/app_endpoints.dart b/imam_datasub/lib/core/config/app_endpoints.dart
+index e5e8202..aa3c70b 100644
+--- a/imam_datasub/lib/core/config/app_endpoints.dart
++++ b/imam_datasub/lib/core/config/app_endpoints.dart
+@@ -35,7 +35,6 @@ class AppEndpoints {
+   static String get fundWalletDynamic => '$_base/wallet/fund/dynamic';
+   static String get redeemCoupon => '$_base/wallet/coupon/redeem';
+   static String get fundWalletVerify => '$_base/wallet/fund/verify';
+-  static String get walletTransfer => '$_base/wallet/transfer';
+   static String get virtualAccount => '$_base/wallet/virtual-account';
+   static String get withdrawalRequest => '$_base/wallet/withdraw';
+ 
+diff --git a/imam_datasub/lib/core/router/app_router.dart b/imam_datasub/lib/core/router/app_router.dart
+index 82fe50e..fc9f3b0 100644
+--- a/imam_datasub/lib/core/router/app_router.dart
++++ b/imam_datasub/lib/core/router/app_router.dart
+@@ -133,10 +133,6 @@ final routerProvider = Provider<GoRouter>((ref) {
+                         path: 'fund',
+                         builder: (_, __) => const FundWalletScreen(),
+                       ),
+-                      GoRoute(
+-                        path: 'transfer',
+-                        builder: (_, __) => const WalletTransferScreen(),
+-                      ),
+                     ],
+                   ),
+                 ],
+diff --git a/imam_datasub/lib/core/router/route_names.dart b/imam_datasub/lib/core/router/route_names.dart
+index da16874..6d34f56 100644
+--- a/imam_datasub/lib/core/router/route_names.dart
++++ b/imam_datasub/lib/core/router/route_names.dart
+@@ -43,7 +43,6 @@ abstract class RouteNames {
+   // ── Wallet ────────────────────────────────────────────────
+   static const wallet = '/home/dashboard/wallet';
+   static const fundWallet = '/home/dashboard/wallet/fund';
+-  static const walletTransfer = '/home/dashboard/wallet/transfer';
+   static const virtualAccount = '/home/dashboard/wallet/virtual-account';
+ 
+   // ── Transaction detail ────────────────────────────────────
+diff --git a/imam_datasub/lib/features/home/presentation/screens/home_screen.dart b/imam_datasub/lib/features/home/presentation/screens/home_screen.dart
+index 80f07ea..317c7be 100644
+--- a/imam_datasub/lib/features/home/presentation/screens/home_screen.dart
++++ b/imam_datasub/lib/features/home/presentation/screens/home_screen.dart
+@@ -202,7 +202,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
+                         ref.read(balanceVisibilityProvider.notifier).state =
+                             !balanceHidden,
+                     onFund: () => context.push(RouteNames.fundWallet),
+-                    onTransfer: () => context.push(RouteNames.walletTransfer),
+                   ),
+                   data: (wallet) => WalletCard(
+                     balance: wallet.totalBalance,
+@@ -213,7 +212,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
+                         ref.read(balanceVisibilityProvider.notifier).state =
+                             !balanceHidden,
+                     onFund: () => context.push(RouteNames.fundWallet),
+-                    onTransfer: () => context.push(RouteNames.walletTransfer),
+                   ),
+                 ),
+ 
+diff --git a/imam_datasub/lib/features/wallet/data/datasources/wallet_remote_datasource.dart b/imam_datasub/lib/features/wallet/data/datasources/wallet_remote_datasource.dart
+index 7f98cef..7a4f992 100644
+--- a/imam_datasub/lib/features/wallet/data/datasources/wallet_remote_datasource.dart
++++ b/imam_datasub/lib/features/wallet/data/datasources/wallet_remote_datasource.dart
+@@ -13,11 +13,6 @@ abstract class WalletRemoteDataSource {
+   Future<Map<String, dynamic>> createDynamicFunding({required double amount});
+   Future<Map<String, dynamic>> redeemCoupon({required String code});
+   Future<Map<String, dynamic>> verifyFunding({required String reference});
+-  Future<void> transfer({
+-    required String recipientIdentifier,
+-    required double amount,
+-    required String pin,
+-  });
+   Future<void> requestWithdrawal({
+     required double amount,
+     required String bankAccountNumber,
+@@ -109,22 +104,6 @@ class WalletRemoteDataSourceImpl implements WalletRemoteDataSource {
+     }
+   }
+ 
+-  @override
+-  Future<void> transfer({
+-    required String recipientIdentifier,
+-    required double amount,
+-    required String pin,
+-  }) async {
+-    try {
+-      await _dio.post(
+-        AppEndpoints.walletTransfer,
+-        data: {'recipient': recipientIdentifier, 'amount': amount, 'pin': pin},
+-      );
+-    } on DioException catch (e) {
+-      throw ErrorHandler.handleException(e);
+-    }
+-  }
+-
+   @override
+   Future<void> requestWithdrawal({
+     required double amount,
+diff --git a/imam_datasub/lib/features/wallet/data/repositories/wallet_repository_impl.dart b/imam_datasub/lib/features/wallet/data/repositories/wallet_repository_impl.dart
+index 2039632..ddfcdc4 100644
+--- a/imam_datasub/lib/features/wallet/data/repositories/wallet_repository_impl.dart
++++ b/imam_datasub/lib/features/wallet/data/repositories/wallet_repository_impl.dart
+@@ -155,30 +155,6 @@ class WalletRepositoryImpl implements WalletRepository {
+     }
+   }
+ 
+-  @override
+-  Future<Either<Failure, void>> transfer({
+-    required String recipientIdentifier,
+-    required double amount,
+-    required String pin,
+-  }) async {
+-    if (!await _networkInfo.isConnected) {
+-      return const Left(NetworkFailure());
+-    }
+-    try {
+-      await _remote.transfer(
+-        recipientIdentifier: recipientIdentifier,
+-        amount: amount,
+-        pin: pin,
+-      );
+-      await _hive.remove(_cacheKey);
+-      return const Right(null);
+-    } on AppException catch (e) {
+-      return Left(ErrorHandler.exceptionToFailure(e));
+-    } catch (e) {
+-      return Left(UnknownFailure(message: e.toString()));
+-    }
+-  }
+-
+   @override
+   Future<Either<Failure, void>> requestWithdrawal({
+     required double amount,
+diff --git a/imam_datasub/lib/features/wallet/domain/repositories/wallet_repository.dart b/imam_datasub/lib/features/wallet/domain/repositories/wallet_repository.dart
+index 120faa8..4b49927 100644
+--- a/imam_datasub/lib/features/wallet/domain/repositories/wallet_repository.dart
++++ b/imam_datasub/lib/features/wallet/domain/repositories/wallet_repository.dart
+@@ -18,11 +18,6 @@ abstract class WalletRepository {
+   Future<Either<Failure, Map<String, dynamic>>> verifyFunding({
+     required String reference,
+   });
+-  Future<Either<Failure, void>> transfer({
+-    required String recipientIdentifier,
+-    required double amount,
+-    required String pin,
+-  });
+   Future<Either<Failure, void>> requestWithdrawal({
+     required double amount,
+     required String bankAccountNumber,
+diff --git a/imam_datasub/lib/features/wallet/presentation/providers/wallet_provider.dart b/imam_datasub/lib/features/wallet/presentation/providers/wallet_provider.dart
+index 909963c..4928a32 100644
+--- a/imam_datasub/lib/features/wallet/presentation/providers/wallet_provider.dart
++++ b/imam_datasub/lib/features/wallet/presentation/providers/wallet_provider.dart
+@@ -83,20 +83,6 @@ class WalletNotifier extends StateNotifier<AsyncValue<WalletEntity>> {
+     return result;
+   }
+ 
+-  Future<Either<Failure, void>> transfer({
+-    required String recipientIdentifier,
+-    required double amount,
+-    required String pin,
+-  }) async {
+-    final result = await _repository.transfer(
+-      recipientIdentifier: recipientIdentifier,
+-      amount: amount,
+-      pin: pin,
+-    );
+-    result.fold((_) {}, (_) => refresh());
+-    return result;
+-  }
+-
+   @override
+   void dispose() {
+     _pollTimer?.cancel();
+diff --git a/imam_datasub/lib/features/wallet/presentation/screens/wallet_screen.dart b/imam_datasub/lib/features/wallet/presentation/screens/wallet_screen.dart
+index c4dccc2..1c45020 100644
+--- a/imam_datasub/lib/features/wallet/presentation/screens/wallet_screen.dart
++++ b/imam_datasub/lib/features/wallet/presentation/screens/wallet_screen.dart
+@@ -46,7 +46,6 @@ class WalletScreen extends ConsumerWidget {
+                         ref.read(balanceVisibilityProvider.notifier).state =
+                             !balanceHidden,
+                     onFund: () => context.push(RouteNames.fundWallet),
+-                    onTransfer: () => context.push(RouteNames.walletTransfer),
+                   ),
+                 ),
+ 
+@@ -69,21 +68,6 @@ class WalletScreen extends ConsumerWidget {
+                             color: AppColors.success500,
+                             onTap: () => context.push(RouteNames.fundWallet),
+                           ),
+-                          const SizedBox(width: 12),
+-                          _ActionCard(
+-                            icon: Icons.swap_horiz_rounded,
+-                            label: 'Transfer',
+-                            color: AppColors.primary500,
+-                            onTap: () =>
+-                                context.push(RouteNames.walletTransfer),
+-                          ),
+-                          const SizedBox(width: 12),
+-                          _ActionCard(
+-                            icon: Icons.arrow_downward_rounded,
+-                            label: 'Withdraw',
+-                            color: AppColors.accent500,
+-                            onTap: () => _showWithdrawSheet(context, ref),
+-                          ),
+                         ],
+                       ),
+ 
+@@ -176,145 +160,6 @@ class WalletScreen extends ConsumerWidget {
+       ),
+     );
+   }
+-
+-  void _showWithdrawSheet(BuildContext context, WidgetRef ref) {
+-    showModalBottomSheet<void>(
+-      context: context,
+-      isScrollControlled: true,
+-      useSafeArea: true,
+-      builder: (_) => const _WithdrawSheet(),
+-    );
+-  }
+-}
+-
+-class WalletTransferScreen extends ConsumerStatefulWidget {
+-  const WalletTransferScreen({super.key});
+-
+-  @override
+-  ConsumerState<WalletTransferScreen> createState() =>
+-      _WalletTransferScreenState();
+-}
+-
+-class _WalletTransferScreenState extends ConsumerState<WalletTransferScreen> {
+-  final _recipientController = TextEditingController();
+-  final _amountController = TextEditingController();
+-  final _pinController = TextEditingController();
+-  bool _isProcessing = false;
+-
+-  @override
+-  void dispose() {
+-    _recipientController.dispose();
+-    _amountController.dispose();
+-    _pinController.dispose();
+-    super.dispose();
+-  }
+-
+-  Future<void> _handleTransfer() async {
+-    context.hideKeyboard();
+-    final recipient = _recipientController.text.trim();
+-    final amount = double.tryParse(_amountController.text.replaceAll(',', ''));
+-    final pin = _pinController.text.trim();
+-
+-    if (recipient.isEmpty) {
+-      context.showSnackBar(
+-        'Enter recipient phone, email, or account ID',
+-        isError: true,
+-      );
+-      return;
+-    }
+-    if (amount == null || amount <= 0) {
+-      context.showSnackBar('Enter a valid amount', isError: true);
+-      return;
+-    }
+-    if (pin.length != 4) {
+-      context.showSnackBar('Enter your 4-digit transaction PIN', isError: true);
+-      return;
+-    }
+-
+-    setState(() => _isProcessing = true);
+-    final result = await ref
+-        .read(walletNotifierProvider.notifier)
+-        .transfer(recipientIdentifier: recipient, amount: amount, pin: pin);
+-    if (mounted) setState(() => _isProcessing = false);
+-
+-    if (!mounted) return;
+-    result.fold(
+-      (failure) => context.showSnackBar(failure.message, isError: true),
+-      (_) {
+-        context.showSnackBar('Transfer submitted successfully');
+-        context.pop();
+-      },
+-    );
+-  }
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    return Scaffold(
+-      appBar: AppBar(title: const Text('Transfer')),
+-      body: SafeArea(
+-        top: false,
+-        child: SingleChildScrollView(
+-          padding: const EdgeInsets.all(AppDimensions.screenPaddingH),
+-          child: Column(
+-            crossAxisAlignment: CrossAxisAlignment.start,
+-            children: [
+-              KDCard(
+-                backgroundColor: AppColors.primary50,
+-                border: Border.all(color: AppColors.primary100),
+-                child: Row(
+-                  children: [
+-                    Icon(
+-                      Icons.info_outline_rounded,
+-                      color: context.colors.primary,
+-                      size: 18,
+-                    ),
+-                    const SizedBox(width: 8),
+-                    Expanded(
+-                      child: Text(
+-                        'Send funds to another Imam DataSub user with their phone, email, or account ID.',
+-                        style: TextStyle(
+-                          fontSize: 12,
+-                          color: context.colors.primary,
+-                        ),
+-                      ),
+-                    ),
+-                  ],
+-                ),
+-              ),
+-              const SizedBox(height: 20),
+-              KDTextField(
+-                controller: _recipientController,
+-                label: 'Recipient',
+-                prefixIcon: Icons.person_search_outlined,
+-                textInputAction: TextInputAction.next,
+-              ),
+-              const SizedBox(height: 14),
+-              KDAmountField(controller: _amountController, label: 'Amount'),
+-              const SizedBox(height: 14),
+-              KDTextField(
+-                controller: _pinController,
+-                label: 'Transaction PIN',
+-                prefixIcon: Icons.pin_outlined,
+-                obscureText: true,
+-                keyboardType: TextInputType.number,
+-                inputFormatters: [
+-                  FilteringTextInputFormatter.digitsOnly,
+-                  LengthLimitingTextInputFormatter(4),
+-                ],
+-              ),
+-              const SizedBox(height: 28),
+-              KDButton(
+-                label: 'Transfer',
+-                onPressed: _handleTransfer,
+-                isLoading: _isProcessing,
+-                gradient: AppColors.primaryGradient,
+-              ),
+-            ],
+-          ),
+-        ),
+-      ),
+-    );
+-  }
+ }
+ 
+ class _ActionCard extends StatelessWidget {
+@@ -399,117 +244,3 @@ class _AccountRow extends StatelessWidget {
+     );
+   }
+ }
+-
+-class _WithdrawSheet extends ConsumerStatefulWidget {
+-  const _WithdrawSheet();
+-
+-  @override
+-  ConsumerState<_WithdrawSheet> createState() => _WithdrawSheetState();
+-}
+-
+-class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
+-  final _amountController = TextEditingController();
+-  final _accountController = TextEditingController();
+-  final _bankController = TextEditingController();
+-  bool _isProcessing = false;
+-
+-  @override
+-  void dispose() {
+-    _amountController.dispose();
+-    _accountController.dispose();
+-    _bankController.dispose();
+-    super.dispose();
+-  }
+-
+-  Future<void> _handleWithdraw() async {
+-    context.hideKeyboard();
+-    final amount = double.tryParse(_amountController.text.replaceAll(',', ''));
+-    if (amount == null || amount < 500) {
+-      context.showSnackBar('Minimum withdrawal is ₦500', isError: true);
+-      return;
+-    }
+-
+-    setState(() => _isProcessing = true);
+-    final result = await ref
+-        .read(walletNotifierProvider.notifier)
+-        .transfer(
+-          recipientIdentifier: _accountController.text.trim(),
+-          amount: amount,
+-          pin: '', // PIN verified via PIN sheet before this
+-        );
+-    setState(() => _isProcessing = false);
+-
+-    if (!mounted) return;
+-    result.fold(
+-      (failure) => context.showSnackBar(failure.message, isError: true),
+-      (_) {
+-        Navigator.of(context).pop();
+-        context.showSnackBar('Withdrawal request submitted!');
+-      },
+-    );
+-  }
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    return Padding(
+-      padding: EdgeInsets.only(
+-        bottom: MediaQuery.of(context).viewInsets.bottom,
+-      ),
+-      child: Padding(
+-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+-        child: Column(
+-          mainAxisSize: MainAxisSize.min,
+-          crossAxisAlignment: CrossAxisAlignment.start,
+-          children: [
+-            Center(
+-              child: Container(
+-                width: 40,
+-                height: 4,
+-                decoration: BoxDecoration(
+-                  color: AppColors.neutral300,
+-                  borderRadius: BorderRadius.circular(2),
+-                ),
+-              ),
+-            ),
+-            const SizedBox(height: 20),
+-            Text(
+-              'Withdraw funds',
+-              style: context.textTheme.titleLarge?.copyWith(
+-                fontWeight: FontWeight.w800,
+-              ),
+-            ),
+-            const SizedBox(height: 20),
+-            KDTextField(
+-              controller: _accountController,
+-              label: 'Account number',
+-              prefixIcon: Icons.account_balance_outlined,
+-              keyboardType: TextInputType.number,
+-              inputFormatters: [
+-                FilteringTextInputFormatter.digitsOnly,
+-                LengthLimitingTextInputFormatter(10),
+-              ],
+-            ),
+-            const SizedBox(height: 14),
+-            KDTextField(
+-              controller: _bankController,
+-              label: 'Bank name',
+-              prefixIcon: Icons.corporate_fare_rounded,
+-            ),
+-            const SizedBox(height: 14),
+-            KDAmountField(
+-              controller: _amountController,
+-              label: 'Amount (min ₦500)',
+-            ),
+-            const SizedBox(height: 24),
+-            KDButton(
+-              label: 'Submit withdrawal',
+-              onPressed: _handleWithdraw,
+-              isLoading: _isProcessing,
+-              gradient: AppColors.primaryGradient,
+-            ),
+-          ],
+-        ),
+-      ),
+-    );
+-  }
+-}
+diff --git a/imam_datasub/lib/shared/widgets/wallet_card.dart b/imam_datasub/lib/shared/widgets/wallet_card.dart
+index 8d9e201..c29cde9 100644
+--- a/imam_datasub/lib/shared/widgets/wallet_card.dart
++++ b/imam_datasub/lib/shared/widgets/wallet_card.dart
+@@ -14,7 +14,7 @@ class WalletCard extends StatelessWidget {
+     required this.isBalanceHidden,
+     required this.onToggleBalance,
+     required this.onFund,
+-    required this.onTransfer,
++    this.onTransfer,
+     this.isLoading = false,
+   });
+ 
+@@ -24,7 +24,9 @@ class WalletCard extends StatelessWidget {
+   final bool isBalanceHidden;
+   final VoidCallback onToggleBalance;
+   final VoidCallback onFund;
+-  final VoidCallback onTransfer;
++  // Nullable: when null, the Transfer button is hidden entirely (e.g. on the
++  // home dashboard, where transfer-to-another-user was intentionally removed).
++  final VoidCallback? onTransfer;
+   final bool isLoading;
+ 
+   @override
+@@ -247,12 +249,14 @@ class WalletCard extends StatelessWidget {
+                             label: 'Add money',
+                             onTap: onFund,
+                           ),
+-                          const SizedBox(width: 12),
+-                          _ActionButton(
+-                            icon: Icons.swap_horiz_rounded,
+-                            label: 'Transfer',
+-                            onTap: onTransfer,
+-                          ),
++                          if (onTransfer != null) ...[
++                            const SizedBox(width: 12),
++                            _ActionButton(
++                              icon: Icons.swap_horiz_rounded,
++                              label: 'Transfer',
++                              onTap: onTransfer!,
++                            ),
++                          ],
+                         ],
+                       ),
+                     ],
+diff --git a/imam_datasub_backend/prisma/migrations/20260803120000_add_password_lockout/migration.sql b/imam_datasub_backend/prisma/migrations/20260803120000_add_password_lockout/migration.sql
+new file mode 100644
+index 0000000..03199cc
+--- /dev/null
++++ b/imam_datasub_backend/prisma/migrations/20260803120000_add_password_lockout/migration.sql
+@@ -0,0 +1,10 @@
++-- Adds failure-count + lockout tracking for the main account password on
++-- POST /api/auth/login, mirroring the pattern already used for the 4-digit
++-- transaction PIN (pinFailures/pinLockedUntil) and the 6-digit login PIN
++-- (loginPinFailures/loginPinLockedUntil). Previously the password itself had
++-- no brute-force protection at all - only the global 120 req/min per-IP rate
++-- limit stood between an attacker and unlimited password guesses against a
++-- single account.
++
++ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "passwordFailures" INTEGER NOT NULL DEFAULT 0;
++ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "passwordLockedUntil" TIMESTAMP(3);
+diff --git a/imam_datasub_backend/prisma/schema.prisma b/imam_datasub_backend/prisma/schema.prisma
+index 491ad51..775f026 100644
+--- a/imam_datasub_backend/prisma/schema.prisma
++++ b/imam_datasub_backend/prisma/schema.prisma
+@@ -92,6 +92,8 @@ model User {
+   loginPinHash         String?
+   loginPinFailures     Int            @default(0)
+   loginPinLockedUntil  DateTime?
++  passwordFailures     Int            @default(0)
++  passwordLockedUntil  DateTime?
+   virtualAccountNumber String?
+   virtualAccountBank   String?
+   paystackCustomerCode String?
+diff --git a/imam_datasub_backend/src/routes/auth.routes.ts b/imam_datasub_backend/src/routes/auth.routes.ts
+index 3e3a7b1..afaedb4 100644
+--- a/imam_datasub_backend/src/routes/auth.routes.ts
++++ b/imam_datasub_backend/src/routes/auth.routes.ts
+@@ -12,6 +12,12 @@ import { tryProvisionInstantVirtualAccount } from '../services/kyc.service.js';
+ 
+ export const authRoutes = Router();
+ 
++// Mirrors the lockout already used for the transaction PIN and login PIN
++// (see login-pin.service.ts / wallet.service.ts verifyPin) - previously the
++// account password itself had no per-account brute-force protection at all.
++const MAX_PASSWORD_FAILURES = 5;
++const PASSWORD_LOCKOUT_MINUTES = 30;
++
+ async function authResponse(
+   user: Awaited<ReturnType<typeof prisma.user.findUniqueOrThrow>>,
+   tokens: { accessToken: string; refreshToken: string; expiresIn: number }
+@@ -113,6 +119,16 @@ authRoutes.post('/login', async (req, res) => {
+     throw new ApiError(401, 'Invalid email/phone or password', 'INVALID_CREDENTIALS');
+   }
+ 
++  // Checked before comparing the password so a locked account fails fast
++  // (and consistently) regardless of what password is supplied.
++  if (user.passwordLockedUntil && user.passwordLockedUntil > new Date()) {
++    throw new ApiError(
++      423,
++      'Too many failed login attempts. Try again in a bit, or reset your password.',
++      'PASSWORD_LOCKED'
++    );
++  }
++
+   let ok = await bcrypt.compare(body.password, user.passwordHash);
+ 
+   // This app account's email is also an active admin's email, and the app
+@@ -134,9 +150,29 @@ authRoutes.post('/login', async (req, res) => {
+   }
+ 
+   if (!ok) {
++    const failures = user.passwordFailures + 1;
++    await prisma.user.update({
++      where: { id: user.id },
++      data: {
++        passwordFailures: failures,
++        passwordLockedUntil:
++          failures >= MAX_PASSWORD_FAILURES
++            ? new Date(Date.now() + PASSWORD_LOCKOUT_MINUTES * 60 * 1000)
++            : null
++      }
++    });
+     throw new ApiError(401, 'Invalid email/phone or password', 'INVALID_CREDENTIALS');
+   }
+ 
++  // Successful password - clear any prior failure count/lockout so it
++  // doesn't linger and affect a future legitimate attempt.
++  if (user.passwordFailures > 0 || user.passwordLockedUntil) {
++    await prisma.user.update({
++      where: { id: user.id },
++      data: { passwordFailures: 0, passwordLockedUntil: null }
++    });
++  }
++
+   if (user.accountStatus === 'DEACTIVATED') {
+     throw new ApiError(
+       403,
+diff --git a/imam_datasub_backend/src/routes/wallet.routes.ts b/imam_datasub_backend/src/routes/wallet.routes.ts
+index 4af4194..f54b68a 100644
+--- a/imam_datasub_backend/src/routes/wallet.routes.ts
++++ b/imam_datasub_backend/src/routes/wallet.routes.ts
+@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma.js';
+ import { koboToNaira } from '../lib/money.js';
+ import { requireAuth } from '../middleware/auth.js';
+ import { paystackService } from '../services/paystack.service.js';
+-import { createPendingFunding, creditWalletByReference, redeemCoupon, verifyPin } from '../services/wallet.service.js';
++import { createPendingFunding, creditWalletByReference, redeemCoupon } from '../services/wallet.service.js';
+ import { tryProvisionInstantVirtualAccount } from '../services/kyc.service.js';
+ 
+ export const walletRoutes = Router();
+@@ -160,13 +160,10 @@ walletRoutes.post('/coupon/redeem', async (req, res) => {
+   });
+ });
+ 
+-walletRoutes.post('/transfer', async (req, res) => {
+-  const body = z.object({
+-    recipient: z.string(),
+-    amount: z.number().positive(),
+-    pin: z.string()
+-  }).parse(req.body);
+-
+-  await verifyPin(req.user!.id, body.pin);
+-  res.json({ status: true, message: 'Transfer route scaffolded', data: { recipient: body.recipient } });
+-});
++// NOTE: transfer-to-another-user was removed (both the /wallet/transfer
++// endpoint that used to live here and its dashboard button) - it was only
++// ever a scaffold that validated the PIN and returned a fake "success"
++// without moving any money, reachable directly by anyone calling the API
++// even after the UI button was pulled. If this feature comes back, it needs
++// a real implementation (recipient lookup, atomic debit+credit in one
++// transaction, idempotency) - not resurrecting this stub.
+diff --git a/imam_datasub_backend/src/server.ts b/imam_datasub_backend/src/server.ts
+index 9f60292..85426cd 100644
+--- a/imam_datasub_backend/src/server.ts
++++ b/imam_datasub_backend/src/server.ts
+@@ -29,6 +29,19 @@ process.on('unhandledRejection', (reason) => {
+ 
+ async function startServer() {
+   try {
++    // MOCK_PROVIDER defaults to true when unset (see env.ts) - safe for local
++    // dev, but if it's ever unset on a production deploy, data plans, purchases,
++    // and the provider wallet balance shown in the admin dashboard will all be
++    // fake/static instead of real Alrahuz data, with no visible error. Shout
++    // about it loudly here so a missing Railway env var doesn't go unnoticed.
++    if (env.NODE_ENV === 'production' && env.MOCK_PROVIDER) {
++      console.error(
++        '[server] WARNING: NODE_ENV=production but MOCK_PROVIDER is true (unset or not "false"). ' +
++          'Data plans, purchases, and the provider wallet balance are all running on MOCK data. ' +
++          'Set MOCK_PROVIDER=false in the Railway environment variables to use real Alrahuz data.'
++      );
++    }
++
+     console.log('[server] Creating Express app');
+     const app = createApp();
+ 
+diff --git a/imam_datasub_backend/src/services/data-plan-pricing.service.ts b/imam_datasub_backend/src/services/data-plan-pricing.service.ts
+index 04d59a4..d49908b 100644
+--- a/imam_datasub_backend/src/services/data-plan-pricing.service.ts
++++ b/imam_datasub_backend/src/services/data-plan-pricing.service.ts
+@@ -26,48 +26,70 @@ function defaultSellingPrice(providerCost: number) {
+ }
+ 
+ export class DataPlanPricingService {
++  /**
++   * Was previously one sequential `upsert` per plan (N+1: ~50-100+ round trips
++   * to Postgres, one per plan, every time the in-memory plan cache went cold).
++   * With DATABASE_URL's connection_limit=1 that serialized queue alone could
++   * take several seconds - this was the main cause of "data plans dinah dade
++   * yana loading". Fixed by reading all existing pricing rows for this batch
++   * in ONE query, computing prices from that in-memory map (no DB round trip
++   * needed on the hot path for plans we've already priced before), and only
++   * writing the rows that are actually new/changed - and doing that write
++   * AFTER the response-relevant computation, via persistPricingUpdates(),
++   * fired-and-forgotten so it never blocks what the user is waiting on.
++   */
+   async applyPricing(plans: DataPlan[], network: string) {
+-    // NOTE: This runs sequentially on purpose. The Supabase/Railway connection
+-    // pool is capped (connection_limit=1 in DATABASE_URL) to avoid PgBouncer
+-    // "prepared statement does not exist" errors under transaction pooling.
+-    // Firing all upserts concurrently (Promise.all + map) exhausts that single
+-    // connection slot and every other upsert times out waiting for it.
++    if (plans.length === 0) return [];
++
++    const existingRows = await prisma.dataPlanPricing.findMany({
++      where: {
++        provider: 'alrahuz',
++        providerPlanId: { in: plans.map((plan) => plan.id) }
++      }
++    });
++    const existingByPlanId = new Map(existingRows.map((row) => [row.providerPlanId, row]));
++
+     const priced: PricedDataPlan[] = [];
++    const toCreate: { plan: DataPlan; providerCostKobo: bigint; planType: string | undefined }[] = [];
++    const toUpdate: { id: string; plan: DataPlan; providerCostKobo: bigint; planType: string | undefined }[] = [];
+ 
+     for (const plan of plans) {
+       const providerCostKobo = nairaToKobo(plan.amount);
+-      const pricing = await prisma.dataPlanPricing.upsert({
+-        where: {
+-          provider_providerPlanId: {
+-            provider: 'alrahuz',
+-            providerPlanId: plan.id
+-          }
+-        },
+-        update: {
+-          network,
+-          networkId: plan.networkId,
+-          planType: planTypeFrom(plan.name),
+-          name: plan.name,
+-          validity: plan.validity,
+-          providerCostKobo,
+-          lastSeenAt: new Date()
+-        },
+-        create: {
+-          provider: 'alrahuz',
+-          providerPlanId: plan.id,
+-          network,
+-          networkId: plan.networkId,
+-          planType: planTypeFrom(plan.name),
+-          name: plan.name,
+-          validity: plan.validity,
+-          providerCostKobo
++      const planType = planTypeFrom(plan.name);
++      const existing = existingByPlanId.get(plan.id);
++
++      let providerAmount: number;
++      let sellingAmount: number;
++      let isActive: boolean;
++      let pricingId: string | undefined;
++      let resolvedPlanType: string | undefined;
++
++      if (existing) {
++        providerAmount = koboToNaira(providerCostKobo);
++        sellingAmount = existing.sellingPriceKobo
++          ? koboToNaira(existing.sellingPriceKobo)
++          : defaultSellingPrice(providerAmount);
++        isActive = existing.isActive;
++        pricingId = existing.id;
++        resolvedPlanType = existing.planType ?? planType;
++
++        // Only queue a write if something Alrahuz-reported actually changed
++        // (cost, name, validity) - avoids rewriting every row on every
++        // cache refresh when nothing moved.
++        const changed =
++          existing.providerCostKobo !== providerCostKobo ||
++          existing.name !== plan.name ||
++          existing.validity !== plan.validity;
++        if (changed) {
++          toUpdate.push({ id: existing.id, plan, providerCostKobo, planType });
+         }
+-      });
+-
+-      const providerAmount = koboToNaira(pricing.providerCostKobo);
+-      const sellingAmount = pricing.sellingPriceKobo
+-        ? koboToNaira(pricing.sellingPriceKobo)
+-        : defaultSellingPrice(providerAmount);
++      } else {
++        providerAmount = koboToNaira(providerCostKobo);
++        sellingAmount = defaultSellingPrice(providerAmount);
++        isActive = true; // schema default - new plans are active until an admin disables them
++        resolvedPlanType = planType;
++        toCreate.push({ plan, providerCostKobo, planType });
++      }
+ 
+       priced.push({
+         ...plan,
+@@ -75,15 +97,66 @@ export class DataPlanPricingService {
+         providerAmount,
+         sellingAmount,
+         profit: sellingAmount - providerAmount,
+-        isActive: pricing.isActive,
+-        pricingId: pricing.id,
+-        planType: pricing.planType ?? planTypeFrom(plan.name)
++        isActive,
++        pricingId,
++        planType: resolvedPlanType
+       } satisfies PricedDataPlan);
+     }
+ 
++    if (toCreate.length > 0 || toUpdate.length > 0) {
++      // Fire-and-forget: the priced list above already has everything the
++      // caller needs, so persistence doesn't have to finish before we return.
++      void this.persistPricingUpdates(network, toCreate, toUpdate);
++    }
++
+     return priced.filter((plan) => plan.isActive);
+   }
+ 
++  /**
++   * Writes new/changed plan rows in the background, after applyPricing()
++   * has already returned its answer. Still sequential (same connection_limit=1
++   * constraint as before), but that no longer matters for response latency
++   * since nothing is waiting on it - it just needs to finish eventually.
++   */
++  private async persistPricingUpdates(
++    network: string,
++    toCreate: { plan: DataPlan; providerCostKobo: bigint; planType: string | undefined }[],
++    toUpdate: { id: string; plan: DataPlan; providerCostKobo: bigint; planType: string | undefined }[]
++  ) {
++    try {
++      for (const { plan, providerCostKobo, planType } of toCreate) {
++        await prisma.dataPlanPricing.create({
++          data: {
++            provider: 'alrahuz',
++            providerPlanId: plan.id,
++            network,
++            networkId: plan.networkId,
++            planType,
++            name: plan.name,
++            validity: plan.validity,
++            providerCostKobo
++          }
++        });
++      }
++      for (const { id, plan, providerCostKobo, planType } of toUpdate) {
++        await prisma.dataPlanPricing.update({
++          where: { id },
++          data: {
++            network,
++            networkId: plan.networkId,
++            planType,
++            name: plan.name,
++            validity: plan.validity,
++            providerCostKobo,
++            lastSeenAt: new Date()
++          }
++        });
++      }
++    } catch (err) {
++      console.error(`[pricing] background persist failed for ${network}:`, err);
++    }
++  }
++
+   async getPricingRows(network?: string) {
+     const rows = await prisma.dataPlanPricing.findMany({
+       where: network ? { network: network.toUpperCase() } : undefined,
+diff --git a/imam_datasub_backend/src/services/provider.service.ts b/imam_datasub_backend/src/services/provider.service.ts
+index 42239b3..e0d9053 100644
+--- a/imam_datasub_backend/src/services/provider.service.ts
++++ b/imam_datasub_backend/src/services/provider.service.ts
+@@ -227,6 +227,10 @@ export class ProviderService {
+ 
+   async refreshBalance() {
+     if (env.MOCK_PROVIDER) {
++      // In mock mode there's no real balance to fetch, so this intentionally
++      // stays at 0 and only bumps lastCheckedAt. If the admin dashboard is
++      // showing NGN 0 and "Refresh" doesn't change it, MOCK_PROVIDER is on -
++      // see the production warning logged at startup in server.ts.
+       return prisma.providerBalanceStatus.upsert({
+         where: { provider: 'alrahuz' },
+         create: { provider: 'alrahuz', lastKnownBalance: 0 },
+@@ -518,7 +522,20 @@ export class ProviderService {
+       url.searchParams.set('network', String(networkId));
+     }
+ 
+-    const response = await fetch(url, { headers: this.headers() });
++    // Without an explicit timeout, a slow/hanging Alrahuz response used to
++    // stall this request (and everyone else's, since getAllDataPlans() waits
++    // on it before the cache is populated) for however long Node's default
++    // socket timeout is. Capped at 8s: comfortably more than a normal
++    // response, short enough that a genuinely stuck provider fails fast and
++    // falls back to the static plan snapshot below instead of leaving the
++    // user staring at a spinner.
++    let response: Response;
++    try {
++      response = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(8000) });
++    } catch (err) {
++      console.error(`[provider] ${network} plans endpoint timed out or failed for ${url.toString()}:`, err);
++      return [];
++    }
+     if (!response.ok) {
+       console.error(`[provider] ${network} plans endpoint returned HTTP ${response.status} for ${url.toString()}`);
+       return [];

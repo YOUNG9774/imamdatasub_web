@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma.js';
 import { koboToNaira } from '../lib/money.js';
 import { requireAuth } from '../middleware/auth.js';
 import { paystackService } from '../services/paystack.service.js';
-import { createPendingFunding, creditWalletByReference, redeemCoupon, verifyPin } from '../services/wallet.service.js';
+import { createPendingFunding, creditWalletByReference, redeemCoupon } from '../services/wallet.service.js';
 import { tryProvisionInstantVirtualAccount } from '../services/kyc.service.js';
 
 export const walletRoutes = Router();
@@ -160,13 +160,10 @@ walletRoutes.post('/coupon/redeem', async (req, res) => {
   });
 });
 
-walletRoutes.post('/transfer', async (req, res) => {
-  const body = z.object({
-    recipient: z.string(),
-    amount: z.number().positive(),
-    pin: z.string()
-  }).parse(req.body);
-
-  await verifyPin(req.user!.id, body.pin);
-  res.json({ status: true, message: 'Transfer route scaffolded', data: { recipient: body.recipient } });
-});
+// NOTE: transfer-to-another-user was removed (both the /wallet/transfer
+// endpoint that used to live here and its dashboard button) - it was only
+// ever a scaffold that validated the PIN and returned a fake "success"
+// without moving any money, reachable directly by anyone calling the API
+// even after the UI button was pulled. If this feature comes back, it needs
+// a real implementation (recipient lookup, atomic debit+credit in one
+// transaction, idempotency) - not resurrecting this stub.

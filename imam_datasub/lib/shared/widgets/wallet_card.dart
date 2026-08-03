@@ -14,7 +14,7 @@ class WalletCard extends StatelessWidget {
     required this.isBalanceHidden,
     required this.onToggleBalance,
     required this.onFund,
-    required this.onTransfer,
+    this.onTransfer,
     this.isLoading = false,
   });
 
@@ -24,7 +24,9 @@ class WalletCard extends StatelessWidget {
   final bool isBalanceHidden;
   final VoidCallback onToggleBalance;
   final VoidCallback onFund;
-  final VoidCallback onTransfer;
+  // Nullable: when null, the Transfer button is hidden entirely (e.g. on the
+  // home dashboard, where transfer-to-another-user was intentionally removed).
+  final VoidCallback? onTransfer;
   final bool isLoading;
 
   @override
@@ -247,12 +249,14 @@ class WalletCard extends StatelessWidget {
                             label: 'Add money',
                             onTap: onFund,
                           ),
-                          const SizedBox(width: 12),
-                          _ActionButton(
-                            icon: Icons.swap_horiz_rounded,
-                            label: 'Transfer',
-                            onTap: onTransfer,
-                          ),
+                          if (onTransfer != null) ...[
+                            const SizedBox(width: 12),
+                            _ActionButton(
+                              icon: Icons.swap_horiz_rounded,
+                              label: 'Transfer',
+                              onTap: onTransfer!,
+                            ),
+                          ],
                         ],
                       ),
                     ],

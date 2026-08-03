@@ -13,11 +13,6 @@ abstract class WalletRemoteDataSource {
   Future<Map<String, dynamic>> createDynamicFunding({required double amount});
   Future<Map<String, dynamic>> redeemCoupon({required String code});
   Future<Map<String, dynamic>> verifyFunding({required String reference});
-  Future<void> transfer({
-    required String recipientIdentifier,
-    required double amount,
-    required String pin,
-  });
   Future<void> requestWithdrawal({
     required double amount,
     required String bankAccountNumber,
@@ -104,22 +99,6 @@ class WalletRemoteDataSourceImpl implements WalletRemoteDataSource {
         data: {'reference': reference},
       );
       return response.data ?? <String, dynamic>{};
-    } on DioException catch (e) {
-      throw ErrorHandler.handleException(e);
-    }
-  }
-
-  @override
-  Future<void> transfer({
-    required String recipientIdentifier,
-    required double amount,
-    required String pin,
-  }) async {
-    try {
-      await _dio.post(
-        AppEndpoints.walletTransfer,
-        data: {'recipient': recipientIdentifier, 'amount': amount, 'pin': pin},
-      );
     } on DioException catch (e) {
       throw ErrorHandler.handleException(e);
     }

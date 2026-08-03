@@ -29,6 +29,19 @@ process.on('unhandledRejection', (reason) => {
 
 async function startServer() {
   try {
+    // MOCK_PROVIDER defaults to true when unset (see env.ts) - safe for local
+    // dev, but if it's ever unset on a production deploy, data plans, purchases,
+    // and the provider wallet balance shown in the admin dashboard will all be
+    // fake/static instead of real Alrahuz data, with no visible error. Shout
+    // about it loudly here so a missing Railway env var doesn't go unnoticed.
+    if (env.NODE_ENV === 'production' && env.MOCK_PROVIDER) {
+      console.error(
+        '[server] WARNING: NODE_ENV=production but MOCK_PROVIDER is true (unset or not "false"). ' +
+          'Data plans, purchases, and the provider wallet balance are all running on MOCK data. ' +
+          'Set MOCK_PROVIDER=false in the Railway environment variables to use real Alrahuz data.'
+      );
+    }
+
     console.log('[server] Creating Express app');
     const app = createApp();
 
