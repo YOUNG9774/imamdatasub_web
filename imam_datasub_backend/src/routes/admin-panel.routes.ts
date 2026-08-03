@@ -5,6 +5,7 @@ import { authenticateAdmin, type AdminSessionUser } from '../admin/auth.js';
 import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { sendAdminBroadcast } from '../services/notification.service.js';
+import { providerService } from '../services/provider.service.js';
 
 export const adminPanelRoutes = Router();
 const COOKIE = 'imam_admin_panel';
@@ -92,10 +93,21 @@ adminPanelRoutes.get('/', async (_req, res) => {
     prisma.servicePricing.findMany({ orderBy: { service: 'asc' } }),
     prisma.notificationBroadcast.findMany({ orderBy: { createdAt: 'desc' }, take: 8 })
   ]);
+  const providerBalance = await prisma.providerBalanceStatus.findUnique({ where: { provider: 'alrahuz' } });
+  const fundingAccount = providerService.getFundingAccount();
+  const providerCard = '<div class="card"><h2>Alrahuz Wallet</h2><div class="grid"><div><div class="muted">Live/last known balance</div><div class="value">' + (providerBalance ? 'NGN ' + money(providerBalance.lastKnownBalance) : 'Not checked') + '</div><div class="muted">' + (providerBalance ? 'Last checked: ' + providerBalance.lastCheckedAt.toISOString() : 'Click refresh to fetch from Alrahuz.') + '</div></div><div><div class="muted">Funding Account</div><p><b>' + esc(fundingAccount.accountNumber) + '</b><br>' + esc(fundingAccount.accountName) + '<br>' + esc(fundingAccount.bankName) + '</p><form method="post" action="/admin/provider-balance/refresh"><button>Refresh Alrahuz Balance</button></form></div></div></div>';
   const rows = prices.map((p) => `<tr><td><b>${esc(p.label)}</b><div class="muted">${esc(p.service)}</div></td><td>NGN ${money(p.providerCostKobo)}</td><td>${p.sellingPriceKobo ? `NGN ${money(p.sellingPriceKobo)}` : 'Provider cost'}</td><td>${p.isActive ? 'Active' : 'Inactive'}</td><td>${canFinance(admin) ? `<form method="post" action="/admin/service-prices/${esc(p.service)}"><input name="sellingPrice" type="number" step="0.01" value="${money(p.sellingPriceKobo)}" placeholder="Selling price"><select name="isActive"><option value="true" ${p.isActive ? 'selected' : ''}>Active</option><option value="false" ${!p.isActive ? 'selected' : ''}>Inactive</option></select><button>Save</button></form>` : 'Read only'}</td></tr>`).join('');
   const bRows = broadcasts.map((b) => `<tr><td>${esc(b.title)}</td><td>${esc(b.type)}</td><td>${esc(b.audience)}</td><td>${b.recipientCount}</td></tr>`).join('');
   const form = canFinance(admin) ? `<div class="card"><h2>Send Welcome/Broadcast Notice</h2><form method="post" action="/admin/broadcast"><p>Title</p><input name="title" required><p>Message</p><textarea name="body" required></textarea><p>Type</p><select name="type"><option value="ADMIN_BROADCAST">Admin Broadcast</option><option value="PROMO">Promo</option><option value="SYSTEM">System</option></select><p>Audience</p><select name="audience"><option value="ALL_USERS">All Users</option><option value="KYC_VERIFIED_ONLY">KYC Verified Only</option></select><p><button>Send</button></p></form></div>` : '';
-  res.type('html').send(layout('Dashboard', `<h1>Dashboard</h1><div class="grid"><div class="card"><div>Users</div><div class="value">${users}</div></div><div class="card"><div>Transactions</div><div class="value">${txs}</div></div><div class="card"><div>Pending KYC</div><div class="value">${kyc}</div></div></div><div class="card"><h2>Service Prices</h2><table><thead><tr><th>Service</th><th>Cost</th><th>Selling</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows || '<tr><td colspan="5">No service prices found.</td></tr>'}</tbody></table></div>${form}<div class="card"><h2>Recent Broadcasts</h2><table><tbody>${bRows || '<tr><td>No broadcasts yet.</td></tr>'}</tbody></table></div>`, admin));
+  res.type('html').send(layout('Dashboard', `<h1>Dashboard</h1><div class="grid"><div class="card"><div>Users</div><div class="value">${users}</div></div><div class="card"><div>Transactions</div><div class="value">${txs}</div></div><div class="card"><div>Pending KYC</div><div class="value">${kyc}</div></div></div>${providerCard}<div class="card"><h2>Service Prices</h2><table><thead><tr><th>Service</th><th>Cost</th><th>Selling</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows || '<tr><td colspan="5">No service prices found.</td></tr>'}</tbody></table></div>${form}<div class="card"><h2>Recent Broadcasts</h2><table><tbody>${bRows || '<tr><td>No broadcasts yet.</td></tr>'}</tbody></table></div>`, admin));
+});
+
+
+adminPanelRoutes.post('/provider-balance/refresh', async (_req, res) => {
+  const admin = res.locals.admin as AdminSessionUser;
+  if (!canFinance(admin)) return res.sendStatus(403);
+  await providerService.refreshBalance();
+  res.redirect('/admin');
 });
 
 adminPanelRoutes.post('/service-prices/:service', async (req, res) => {
@@ -114,3 +126,5 @@ adminPanelRoutes.post('/broadcast', async (req, res) => {
   await sendAdminBroadcast({ adminId: admin.id, title: body.title, body: body.body, type: body.type, audience: body.audience });
   res.redirect('/admin');
 });
+
+

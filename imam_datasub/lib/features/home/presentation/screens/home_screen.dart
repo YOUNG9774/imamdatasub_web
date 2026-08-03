@@ -356,7 +356,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                 ),
 
-                const SizedBox(height: 32),
+                SizedBox(height: 32 + MediaQuery.paddingOf(context).bottom),
               ],
             ),
           ),

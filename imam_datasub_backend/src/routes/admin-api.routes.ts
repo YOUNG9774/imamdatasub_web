@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { dataPlanPricingService } from '../services/data-plan-pricing.service.js';
@@ -20,24 +20,36 @@ adminApiRoutes.get('/me', (req, res) => {
   res.json({ status: true, data: { admin: req.admin } });
 });
 
-// Mirrors what providerBalanceResource shows in the AdminJS web panel -
-// this is the provider's (Alrahuz) self-reported balance, captured
-// automatically after every purchase (see recordProviderBalance in
-// provider.service.ts). Not a live check against Alrahuz - just the last
-// known value, which is all the provider ever tells us anyway.
-adminApiRoutes.get('/provider-balance', requireFinanceAdmin, async (_req, res) => {
-  const rows = await prisma.providerBalanceStatus.findMany({ orderBy: { provider: 'asc' } });
-  res.json({
-    status: true,
-    data: rows.map((r) => ({
+function providerBalancePayload(rows: Awaited<ReturnType<typeof prisma.providerBalanceStatus.findMany>>) {
+  const fundingAccount = providerService.getFundingAccount();
+  return {
+    funding_account: {
+      provider: 'alrahuz',
+      account_number: fundingAccount.accountNumber,
+      account_name: fundingAccount.accountName,
+      bank_name: fundingAccount.bankName
+    },
+    balances: rows.map((r) => ({
       provider: r.provider,
       balance: r.lastKnownBalance,
       last_checked_at: r.lastCheckedAt.toISOString(),
       low_balance_alert_sent_at: r.lowBalanceAlertSentAt?.toISOString() ?? null
     }))
-  });
+  };
+}
+
+adminApiRoutes.get('/provider-balance', requireFinanceAdmin, async (_req, res) => {
+  const rows = await prisma.providerBalanceStatus.findMany({ orderBy: { provider: 'asc' } });
+  const payload = providerBalancePayload(rows);
+  res.json({ status: true, data: payload.balances, funding_account: payload.funding_account });
 });
 
+adminApiRoutes.post('/provider-balance/refresh', requireFinanceAdmin, async (_req, res) => {
+  await providerService.refreshBalance();
+  const rows = await prisma.providerBalanceStatus.findMany({ orderBy: { provider: 'asc' } });
+  const payload = providerBalancePayload(rows);
+  res.json({ status: true, message: 'Alrahuz balance refreshed', data: payload.balances, funding_account: payload.funding_account });
+});
 adminApiRoutes.get('/data-prices', requireFinanceAdmin, async (req, res) => {
   const network = typeof req.query.network === 'string' ? req.query.network : undefined;
   const rows = await dataPlanPricingService.getPricingRows(network);
@@ -160,3 +172,5 @@ adminApiRoutes.get('/notifications/broadcast', requireFinanceAdmin, async (req, 
     }))
   });
 });
+
+

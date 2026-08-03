@@ -105,6 +105,36 @@ class ServicePriceRow {
   }
 }
 
+class ProviderFundingAccount {
+  const ProviderFundingAccount({
+    required this.accountNumber,
+    required this.accountName,
+    required this.bankName,
+  });
+
+  final String accountNumber;
+  final String accountName;
+  final String bankName;
+
+  factory ProviderFundingAccount.fromJson(Map<String, dynamic> json) {
+    return ProviderFundingAccount(
+      accountNumber: json['account_number']?.toString() ?? '',
+      accountName: json['account_name']?.toString() ?? '',
+      bankName: json['bank_name']?.toString() ?? '',
+    );
+  }
+}
+
+class ProviderBalanceBundle {
+  const ProviderBalanceBundle({
+    required this.rows,
+    required this.fundingAccount,
+  });
+
+  final List<ProviderBalanceRow> rows;
+  final ProviderFundingAccount fundingAccount;
+}
+
 class ProviderBalanceRow {
   const ProviderBalanceRow({
     required this.provider,
@@ -119,11 +149,12 @@ class ProviderBalanceRow {
   factory ProviderBalanceRow.fromJson(Map<String, dynamic> json) {
     return ProviderBalanceRow(
       provider: json['provider']?.toString() ?? '',
-      balance: (json['balance'] as num?)?.toDouble() ??
+      balance:
+          (json['balance'] as num?)?.toDouble() ??
           double.tryParse(json['balance']?.toString() ?? '') ??
           0,
-      lastCheckedAt: DateTime.tryParse(
-              json['last_checked_at']?.toString() ?? '') ??
+      lastCheckedAt:
+          DateTime.tryParse(json['last_checked_at']?.toString() ?? '') ??
           DateTime.now(),
     );
   }
@@ -162,7 +193,7 @@ class BroadcastEntity {
       sentBy: json['sent_by']?.toString() ?? '',
       createdAt:
           DateTime.tryParse(json['created_at']?.toString() ?? '') ??
-              DateTime.now(),
+          DateTime.now(),
     );
   }
 }
@@ -245,8 +276,10 @@ class AdminPricingRepository {
     final response = await _dio.get(AppEndpoints.adminServicePrices);
     final list = (response.data['data'] ?? const []) as List<dynamic>;
     return list
-        .map((item) =>
-            ServicePriceRow.fromJson(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) =>
+              ServicePriceRow.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
   }
 
@@ -269,21 +302,50 @@ class AdminPricingRepository {
     );
   }
 
-  Future<List<ProviderBalanceRow>> getProviderBalances() async {
+  ProviderBalanceBundle _providerBalanceBundleFromResponse(Response response) {
+    final body = response.data is Map<String, dynamic>
+        ? response.data as Map<String, dynamic>
+        : Map<String, dynamic>.from(response.data as Map);
+    final list = (body['data'] ?? const []) as List<dynamic>;
+    final funding = body['funding_account'] is Map
+        ? ProviderFundingAccount.fromJson(
+            Map<String, dynamic>.from(body['funding_account'] as Map),
+          )
+        : const ProviderFundingAccount(
+            accountNumber: '6651219714',
+            accountName: 'ALRAHUZDATA - IMAM-DATASUB',
+            bankName: 'Palmpay Automated Bank Transfer',
+          );
+    return ProviderBalanceBundle(
+      rows: list
+          .map(
+            (item) => ProviderBalanceRow.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList(),
+      fundingAccount: funding,
+    );
+  }
+
+  Future<ProviderBalanceBundle> getProviderBalances() async {
     final response = await _dio.get(AppEndpoints.adminProviderBalance);
-    final list = (response.data['data'] ?? const []) as List<dynamic>;
-    return list
-        .map((item) => ProviderBalanceRow.fromJson(
-            Map<String, dynamic>.from(item as Map)))
-        .toList();
+    return _providerBalanceBundleFromResponse(response);
+  }
+
+  Future<ProviderBalanceBundle> refreshProviderBalance() async {
+    final response = await _dio.post(AppEndpoints.adminRefreshProviderBalance);
+    return _providerBalanceBundleFromResponse(response);
   }
 
   Future<List<BroadcastEntity>> getBroadcastHistory() async {
     final response = await _dio.get(AppEndpoints.adminNotificationBroadcast);
     final list = (response.data['data'] ?? const []) as List<dynamic>;
     return list
-        .map((item) =>
-            BroadcastEntity.fromJson(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) =>
+              BroadcastEntity.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
   }
 

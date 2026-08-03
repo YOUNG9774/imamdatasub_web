@@ -66,8 +66,23 @@ export async function buildAdminRouter() {
     rootPath: ADMIN_ROOT_PATH,
     componentLoader,
     branding: {
-      companyName: 'Imam Datasub Admin',
-      withMadeWithLove: false
+      companyName: 'IMAM DATASUB',
+      logo: '/branding/logo.png',
+      favicon: '/branding/favicon.png',
+      withMadeWithLove: false,
+      theme: {
+        colors: {
+          // Matches the app's brand palette (lib/core/constants/app_colors.dart):
+          // Deep Purple primary + Vivid Orange accent.
+          primary100: '#6C47FF',
+          primary80: '#7D67FF',
+          primary60: '#9D8DFF',
+          primary40: '#BDB3FF',
+          primary20: '#DDD9FF',
+          accent: '#FF6B35',
+          love: '#FF6B35'
+        }
+      }
     },
     resources: [
       userResource,

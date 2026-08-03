@@ -40,7 +40,7 @@ class QuickActionGrid extends StatelessWidget {
       ),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
-        childAspectRatio: 0.75,
+        childAspectRatio: 0.66,
         crossAxisSpacing: 8,
         mainAxisSpacing: 12,
       ),
@@ -61,77 +61,84 @@ class _QuickActionItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: action.onTap,
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
+    return InkWell(
+          onTap: action.onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.max,
               children: [
-                Container(
-                  width: AppDimensions.quickActionContainerSize,
-                  height: AppDimensions.quickActionContainerSize,
-                  decoration: BoxDecoration(
-                    color: action.backgroundColor,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color:
-                            action.backgroundColor.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Icon(
-                      action.icon,
-                      color: action.iconColor,
-                      size: AppDimensions.quickActionIconSize,
-                    ),
-                  ),
-                ),
-                if (action.badge != null)
-                  Positioned(
-                    top: -4,
-                    right: -4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 2),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: AppDimensions.quickActionContainerSize,
+                      height: AppDimensions.quickActionContainerSize,
                       decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(8),
+                        color: action.backgroundColor,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: action.backgroundColor.withValues(
+                              alpha: 0.3,
+                            ),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        action.badge!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
+                      child: Center(
+                        child: Icon(
+                          action.icon,
+                          color: action.iconColor,
+                          size: AppDimensions.quickActionIconSize,
                         ),
                       ),
                     ),
+                    if (action.badge != null)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            action.badge!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Flexible(
+                  child: Text(
+                    action.label,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w500,
+                      height: 1.15,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              action.label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    height: 1.2,
-                  ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    )
+          ),
+        )
         .animate(delay: Duration(milliseconds: index * 50))
         .fadeIn(duration: 300.ms)
         .slideY(begin: 0.2, curve: Curves.easeOutCubic);

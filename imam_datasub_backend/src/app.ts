@@ -11,6 +11,7 @@
 // why Railway showed "Application failed to respond" after a failed signup.
 import 'express-async-errors';
 
+import path from 'node:path';
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
@@ -84,6 +85,18 @@ export function createApp() {
   // reviewers or crawlers hitting these plain HTML pages can never get 429'd.
   app.use(legalRoutes);
   app.use('/ref', referralLinkRoutes);
+
+  // Static branding assets (logo/favicon) used by the AdminJS dashboard.
+  // Served from `public/branding` at the process's working directory
+  // (Railway/npm run this from the backend package root, both in `tsx`
+  // dev mode and against the compiled `dist/` build) rather than resolved
+  // relative to this file, since tsc doesn't copy non-.ts assets into
+  // `dist/` alongside the compiled JS. Unauthenticated and cheap to serve,
+  // so - like the legal pages above - it's mounted before the rate limiter.
+  app.use(
+    '/branding',
+    express.static(path.join(process.cwd(), 'public', 'branding'), { maxAge: '1d' })
+  );
 
   app.use(rateLimit({ windowMs: 60_000, limit: 120 }));
 

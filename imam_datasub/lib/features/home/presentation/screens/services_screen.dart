@@ -149,37 +149,41 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   crossAxisCount: 3,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 16,
-                  childAspectRatio: 0.85,
+                  childAspectRatio: 0.72,
                 ),
                 itemCount: filtered.length,
                 itemBuilder: (context, index) {
                   final service = filtered[index];
                   return GestureDetector(
                     onTap: () => context.push(service.route),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            color: service.color.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(18),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              color: service.color.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Icon(service.icon,
+                                color: service.color, size: 28),
                           ),
-                          child: Icon(service.icon,
-                              color: service.color, size: 28),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          service.label,
-                          textAlign: TextAlign.center,
-                          style: context.textTheme.labelSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
+                          const SizedBox(height: 8),
+                          Text(
+                            service.label,
+                            textAlign: TextAlign.center,
+                            style: context.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   )
                       .animate(delay: Duration(milliseconds: index * 30))

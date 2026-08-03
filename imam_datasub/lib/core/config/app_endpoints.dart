@@ -142,6 +142,8 @@ class AppEndpoints {
   static String adminServicePrice(String service) =>
       '$_base/admin/service-prices/$service';
   static String get adminProviderBalance => '$_base/admin/provider-balance';
+  static String get adminRefreshProviderBalance =>
+      '$_base/admin/provider-balance/refresh';
   static String get adminNotificationBroadcast =>
       '$_base/admin/notifications/broadcast';
 }

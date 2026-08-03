@@ -1,8 +1,14 @@
-import { env } from '../config/env.js';
+﻿import { env } from '../config/env.js';
 import { ApiError } from '../middleware/error.js';
 import { prisma } from '../lib/prisma.js';
 import { dataPlanPricingService } from './data-plan-pricing.service.js';
 import { DATA_PLANS, type DataPlan } from './data-plans.data.js';
+
+export type ProviderFundingAccount = {
+  accountNumber: string;
+  accountName: string;
+  bankName: string;
+};
 
 export type ProviderPurchaseInput = {
   network: string; // Alrahuz network ID, e.g. "1" for MTN - see NETWORK_IDS below
@@ -175,6 +181,44 @@ export class ProviderService {
       throw new ApiError(422, 'Selected data plan is no longer available', 'DATA_PLAN_UNAVAILABLE');
     }
     return plan;
+  }
+
+  getFundingAccount(): ProviderFundingAccount {
+    return {
+      accountNumber: env.ALRAHUZ_FUNDING_ACCOUNT_NUMBER,
+      accountName: env.ALRAHUZ_FUNDING_ACCOUNT_NAME,
+      bankName: env.ALRAHUZ_FUNDING_BANK_NAME
+    };
+  }
+
+  async refreshBalance() {
+    if (env.MOCK_PROVIDER) {
+      return prisma.providerBalanceStatus.upsert({
+        where: { provider: 'alrahuz' },
+        create: { provider: 'alrahuz', lastKnownBalance: 0 },
+        update: { lastCheckedAt: new Date() }
+      });
+    }
+
+    const baseUrl = env.ALRAHUZ_BASE_URL.replace(/\/$/, '');
+    const path = env.ALRAHUZ_BALANCE_PATH.startsWith('/')
+      ? env.ALRAHUZ_BALANCE_PATH
+      : `/${env.ALRAHUZ_BALANCE_PATH}`;
+    const response = await fetch(`${baseUrl}${path}`, { headers: this.headers() });
+    const body = (await response.json().catch(() => ({}))) as AlrahuzResponse;
+
+    if (!response.ok) {
+      console.error(`[alrahuz-balance] live refresh failed (http=${response.status}):`, JSON.stringify(body));
+      throw new ApiError(502, body.detail ?? body.api_response ?? 'Unable to refresh Alrahuz balance', 'ALRAHUZ_BALANCE_REFRESH_FAILED');
+    }
+
+    const balance = this.findBalance(body);
+    if (balance === undefined) {
+      console.error('[alrahuz-balance] live refresh response did not include a recognizable balance:', JSON.stringify(body).slice(0, 4000));
+      throw new ApiError(502, 'Alrahuz balance response did not include a recognizable balance', 'ALRAHUZ_BALANCE_NOT_FOUND');
+    }
+
+    return this.recordProviderBalance(balance);
   }
 
   async buyData(input: ProviderPurchaseInput) {
@@ -378,7 +422,7 @@ export class ProviderService {
         : typeof rawBalance === 'string'
           ? Number(rawBalance)
           : undefined;
-    if (balance === undefined || !Number.isFinite(balance)) return;
+    if (balance === undefined || !Number.isFinite(balance)) return null;
 
     const status = await prisma.providerBalanceStatus.upsert({
       where: { provider: 'alrahuz' },
@@ -386,21 +430,40 @@ export class ProviderService {
       update: { lastKnownBalance: balance }
     });
 
-    if (balance >= env.ALRAHUZ_LOW_BALANCE_THRESHOLD) return;
+    if (balance >= env.ALRAHUZ_LOW_BALANCE_THRESHOLD) return status;
 
     const cooldownMs = env.ALRAHUZ_LOW_BALANCE_ALERT_COOLDOWN_MINUTES * 60 * 1000;
     const alreadyAlerted =
       status.lowBalanceAlertSentAt && Date.now() - status.lowBalanceAlertSentAt.getTime() < cooldownMs;
-    if (alreadyAlerted) return;
+    if (alreadyAlerted) return status;
 
     console.error(
       `[alrahuz-balance] LOW BALANCE ALERT: only NGN${balance} left at Alrahuz ` +
         `(threshold NGN${env.ALRAHUZ_LOW_BALANCE_THRESHOLD}) - top up now to avoid failed customer purchases.`
     );
-    await prisma.providerBalanceStatus.update({
+    return prisma.providerBalanceStatus.update({
       where: { provider: 'alrahuz' },
       data: { lowBalanceAlertSentAt: new Date() }
     });
+  }
+
+  private findBalance(value: unknown): number | undefined {
+    if (!value || typeof value !== 'object') return undefined;
+    const record = value as Record<string, unknown>;
+    const preferredKeys = ['balance', 'wallet_balance', 'account_balance', 'Account_Balance', 'user_balance', 'available_balance'];
+    for (const key of preferredKeys) {
+      const parsed = this.numberValue(record[key]);
+      if (parsed !== undefined) return parsed;
+    }
+    for (const [key, nested] of Object.entries(record)) {
+      if (key.toLowerCase().includes('balance')) {
+        const parsed = this.numberValue(nested);
+        if (parsed !== undefined) return parsed;
+      }
+      const nestedBalance = this.findBalance(nested);
+      if (nestedBalance !== undefined) return nestedBalance;
+    }
+    return undefined;
   }
 
   private headers() {
@@ -532,3 +595,4 @@ export class ProviderService {
 }
 
 export const providerService = new ProviderService();
+
