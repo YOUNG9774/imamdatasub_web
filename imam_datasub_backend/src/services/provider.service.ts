@@ -66,6 +66,18 @@ type PlanCacheEntry = {
 
 const planCache = new Map<string, PlanCacheEntry>();
 
+// Guards against a "cache stampede": when the cache for a network is cold
+// (fresh deploy, cache just expired, etc.) and several requests land at
+// nearly the same instant - e.g. many users opening the app right after a
+// new release - each of them used to independently kick off its own
+// applyPricing() run (a chain of sequential DB upserts). Several of those
+// chains running concurrently is exactly what exhausts a small Prisma
+// connection pool and produces "Timed out fetching a new connection from the
+// connection pool". This map ensures only ONE fetch+pricing run happens per
+// network at a time; any request that arrives while one is already in
+// flight just awaits that same promise instead of starting a new one.
+const inFlightFetches = new Map<string, Promise<PlanCacheEntry['plans']>>();
+
 /** Confirmed from your Alrahuz dashboard's Network List. */
 export const NETWORK_IDS: Record<string, number> = {
   MTN: 1,
@@ -132,46 +144,68 @@ export class ProviderService {
       throw new ApiError(422, `Unsupported network: ${network}`, 'UNSUPPORTED_NETWORK');
     }
 
-    const cached = planCache.get(String(networkId));
+    const cacheKey = String(networkId);
+    const cached = planCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.plans;
     }
 
-    const livePlans = await this.fetchLiveDataPlans(network, networkId).catch((err) => {
-      console.error(`[provider] live data plan fetch failed for ${network} (networkId=${networkId}):`, err);
-      return [];
-    });
-    console.log(`[provider] ${network} (networkId=${networkId}): live=${livePlans.length} plans`);
-
-    const staticPlans = DATA_PLANS.filter((plan) => plan.networkId === networkId);
-
-    // A live result that's a small fraction of what we know Alrahuz actually
-    // offers for this network (per the static snapshot) almost always means the
-    // response came back in a shape fetchLiveDataPlans/extractPlans didn't
-    // recognize - e.g. plans grouped by category - rather than Alrahuz genuinely
-    // having only one plan. Treat that as untrustworthy rather than showing an
-    // incomplete catalog. See fetchLiveDataPlans() for the raw-body log that
-    // pins down which case it actually was.
-    const liveLooksIncomplete = livePlans.length > 0 && staticPlans.length > 0 && livePlans.length < staticPlans.length / 4;
-
-    const rawPlans = livePlans.length > 0 && !liveLooksIncomplete ? livePlans : staticPlans;
-    if (livePlans.length === 0) {
-      console.warn(`[provider] ${network} (networkId=${networkId}): live fetch returned nothing usable, falling back to static snapshot, ${rawPlans.length} plans`);
-    } else if (liveLooksIncomplete) {
-      console.warn(
-        `[provider] ${network} (networkId=${networkId}): live fetch only returned ${livePlans.length} plan(s), ` +
-          `expected roughly ${staticPlans.length} based on the static snapshot - likely a response-shape mismatch, falling back to static snapshot instead`
-      );
+    // If a fetch+pricing run for this network is already in progress (another
+    // request beat us here while the cache was cold), just ride along on that
+    // one instead of starting a second concurrent run.
+    const existing = inFlightFetches.get(cacheKey);
+    if (existing) {
+      return existing;
     }
-    const plans = await dataPlanPricingService.applyPricing(rawPlans, network.toUpperCase());
-    console.log(`[provider] ${network} (networkId=${networkId}): ${plans.length} plans after pricing/isActive filter (out of ${rawPlans.length} raw)`);
 
-    planCache.set(String(networkId), {
-      expiresAt: Date.now() + env.ALRAHUZ_DATA_PLANS_CACHE_SECONDS * 1000,
-      plans
-    });
+    const fetchPromise = (async () => {
+      const livePlans = await this.fetchLiveDataPlans(network, networkId).catch((err) => {
+        console.error(`[provider] live data plan fetch failed for ${network} (networkId=${networkId}):`, err);
+        return [];
+      });
+      console.log(`[provider] ${network} (networkId=${networkId}): live=${livePlans.length} plans`);
 
-    return plans;
+      const staticPlans = DATA_PLANS.filter((plan) => plan.networkId === networkId);
+
+      // A live result that's a small fraction of what we know Alrahuz actually
+      // offers for this network (per the static snapshot) almost always means the
+      // response came back in a shape fetchLiveDataPlans/extractPlans didn't
+      // recognize - e.g. plans grouped by category - rather than Alrahuz genuinely
+      // having only one plan. Treat that as untrustworthy rather than showing an
+      // incomplete catalog. See fetchLiveDataPlans() for the raw-body log that
+      // pins down which case it actually was.
+      const liveLooksIncomplete = livePlans.length > 0 && staticPlans.length > 0 && livePlans.length < staticPlans.length / 4;
+
+      const rawPlans = livePlans.length > 0 && !liveLooksIncomplete ? livePlans : staticPlans;
+      if (livePlans.length === 0) {
+        console.warn(`[provider] ${network} (networkId=${networkId}): live fetch returned nothing usable, falling back to static snapshot, ${rawPlans.length} plans`);
+      } else if (liveLooksIncomplete) {
+        console.warn(
+          `[provider] ${network} (networkId=${networkId}): live fetch only returned ${livePlans.length} plan(s), ` +
+            `expected roughly ${staticPlans.length} based on the static snapshot - likely a response-shape mismatch, falling back to static snapshot instead`
+        );
+      }
+      const plans = await dataPlanPricingService.applyPricing(rawPlans, network.toUpperCase());
+      console.log(`[provider] ${network} (networkId=${networkId}): ${plans.length} plans after pricing/isActive filter (out of ${rawPlans.length} raw)`);
+
+      planCache.set(cacheKey, {
+        expiresAt: Date.now() + env.ALRAHUZ_DATA_PLANS_CACHE_SECONDS * 1000,
+        plans
+      });
+
+      return plans;
+    })();
+
+    inFlightFetches.set(cacheKey, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      // Always clear the in-flight marker, success or failure, so the next
+      // request (whether cache-expiry or a genuine retry after an error)
+      // is free to start a fresh run rather than being stuck awaiting a
+      // promise that's already settled.
+      inFlightFetches.delete(cacheKey);
+    }
   }
 
   async getDataPlan(network: string, planId: string) {
