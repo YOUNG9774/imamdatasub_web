@@ -11,17 +11,34 @@ function formatNaira(kobo: bigint) {
 
 /**
  * Admin-editable referral program settings (rate, minimum withdrawal,
- * on/off switch) - see the ReferralSettings AdminJS resource. Upserts the
+ * on/off switch) - see the ReferralSettings AdminJS resource. Creates the
  * singleton row on first read so there's no separate seed step; every
  * caller below reads this fresh rather than caching it, so a change the
  * admin makes takes effect on the very next purchase/withdrawal.
+ *
+ * Deliberately NOT prisma.referralSettings.upsert(): Prisma throws
+ * ("Argument `update` must not be empty") if upsert's `update` object is
+ * empty, which it was here since a routine read must never touch an
+ * existing row. That meant the very first call ever (row doesn't exist ->
+ * CREATE path) succeeded, but every call after that (row exists -> UPDATE
+ * path -> throws on the empty update) failed with a 500 - on every referral
+ * stats fetch, every commission award, and every withdrawal attempt.
  */
 export async function getReferralSettings() {
-  return prisma.referralSettings.upsert({
-    where: { id: 'default' },
-    update: {},
-    create: { id: 'default' }
-  });
+  const existing = await prisma.referralSettings.findUnique({ where: { id: 'default' } });
+  if (existing) return existing;
+
+  try {
+    return await prisma.referralSettings.create({ data: { id: 'default' } });
+  } catch (error) {
+    // Two concurrent first-ever callers both see "no row exists" and both
+    // attempt to create it - only one create can win. Re-fetch and use
+    // whichever row actually landed rather than surfacing a spurious error.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return prisma.referralSettings.findUniqueOrThrow({ where: { id: 'default' } });
+    }
+    throw error;
+  }
 }
 
 /**

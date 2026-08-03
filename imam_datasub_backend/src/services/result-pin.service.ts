@@ -1,4 +1,4 @@
-﻿import { Prisma, TransactionStatus, TransactionType } from '@prisma/client';
+import { Prisma, TransactionStatus, TransactionType } from '@prisma/client';
 import { env } from '../config/env.js';
 import { koboToNaira } from '../lib/money.js';
 import { prisma } from '../lib/prisma.js';
@@ -18,17 +18,53 @@ function priceToKobo(amount: number) {
   return BigInt(Math.round(amount * 100));
 }
 
-export async function getResultPinPrice(examType: ExamPinType) {
+/**
+ * Gets the ServicePricing row for an exam type, creating it with the
+ * env-configured default price only if it has never existed before.
+ *
+ * This deliberately does NOT use prisma.servicePricing.upsert(): Prisma
+ * throws a validation error ("Argument `update` must not be empty") if the
+ * upsert's `update` object is empty, which it was here since we never want
+ * to touch an existing row's price on a routine read. That bug meant the
+ * VERY FIRST call for a given exam type (row doesn't exist -> CREATE path,
+ * update object never evaluated) succeeded, but every call after that
+ * (row exists -> UPDATE path -> throws on the empty update) failed with a
+ * 500 - both for admins viewing/editing service pricing, and for real
+ * users buying a WAEC/NECO/NABTEB pin, since purchaseResultPin() below
+ * calls this same function via getResultPinPrice().
+ *
+ * A plain findUnique + conditional create has no such restriction and, as a
+ * bonus, is more obviously correct: it can never silently reset an admin's
+ * already-configured selling price back to nothing.
+ */
+async function getOrCreateServicePricingRow(examType: ExamPinType) {
   const defaults = DEFAULTS[examType];
-  const row = await prisma.servicePricing.upsert({
-    where: { service: defaults.service },
-    create: {
-      service: defaults.service,
-      label: defaults.label,
-      providerCostKobo: priceToKobo(defaults.price)
-    },
-    update: {}
-  });
+  const existing = await prisma.servicePricing.findUnique({ where: { service: defaults.service } });
+  if (existing) return existing;
+
+  try {
+    return await prisma.servicePricing.create({
+      data: {
+        service: defaults.service,
+        label: defaults.label,
+        providerCostKobo: priceToKobo(defaults.price)
+      }
+    });
+  } catch (error) {
+    // Two concurrent first-ever requests for the same exam type both see
+    // "no row exists" and both attempt to create it - only one create can
+    // win (unique constraint on `service`). Re-fetch and use whichever row
+    // actually landed rather than surfacing a spurious error for this race.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return prisma.servicePricing.findUniqueOrThrow({ where: { service: defaults.service } });
+    }
+    throw error;
+  }
+}
+
+export async function getResultPinPrice(examType: ExamPinType) {
+  const row = await getOrCreateServicePricingRow(examType);
+  const defaults = DEFAULTS[examType];
 
   if (!row.isActive) {
     throw new ApiError(422, `${defaults.label} is currently unavailable`, 'SERVICE_INACTIVE');
@@ -59,18 +95,7 @@ export async function listResultPinPrices() {
  */
 export async function listServicePricesForAdmin() {
   const rows = await Promise.all(
-    (Object.keys(DEFAULTS) as ExamPinType[]).map((exam) => {
-      const defaults = DEFAULTS[exam];
-      return prisma.servicePricing.upsert({
-        where: { service: defaults.service },
-        create: {
-          service: defaults.service,
-          label: defaults.label,
-          providerCostKobo: priceToKobo(defaults.price)
-        },
-        update: {}
-      });
-    })
+    (Object.keys(DEFAULTS) as ExamPinType[]).map((exam) => getOrCreateServicePricingRow(exam))
   );
 
   return rows.map((row) => ({
