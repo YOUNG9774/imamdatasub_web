@@ -27,54 +27,59 @@ function defaultSellingPrice(providerCost: number) {
 
 export class DataPlanPricingService {
   async applyPricing(plans: DataPlan[], network: string) {
-    const priced = await Promise.all(
-      plans.map(async (plan) => {
-        const providerCostKobo = nairaToKobo(plan.amount);
-        const pricing = await prisma.dataPlanPricing.upsert({
-          where: {
-            provider_providerPlanId: {
-              provider: 'alrahuz',
-              providerPlanId: plan.id
-            }
-          },
-          update: {
-            network,
-            networkId: plan.networkId,
-            planType: planTypeFrom(plan.name),
-            name: plan.name,
-            validity: plan.validity,
-            providerCostKobo,
-            lastSeenAt: new Date()
-          },
-          create: {
+    // NOTE: This runs sequentially on purpose. The Supabase/Railway connection
+    // pool is capped (connection_limit=1 in DATABASE_URL) to avoid PgBouncer
+    // "prepared statement does not exist" errors under transaction pooling.
+    // Firing all upserts concurrently (Promise.all + map) exhausts that single
+    // connection slot and every other upsert times out waiting for it.
+    const priced: PricedDataPlan[] = [];
+
+    for (const plan of plans) {
+      const providerCostKobo = nairaToKobo(plan.amount);
+      const pricing = await prisma.dataPlanPricing.upsert({
+        where: {
+          provider_providerPlanId: {
             provider: 'alrahuz',
-            providerPlanId: plan.id,
-            network,
-            networkId: plan.networkId,
-            planType: planTypeFrom(plan.name),
-            name: plan.name,
-            validity: plan.validity,
-            providerCostKobo
+            providerPlanId: plan.id
           }
-        });
+        },
+        update: {
+          network,
+          networkId: plan.networkId,
+          planType: planTypeFrom(plan.name),
+          name: plan.name,
+          validity: plan.validity,
+          providerCostKobo,
+          lastSeenAt: new Date()
+        },
+        create: {
+          provider: 'alrahuz',
+          providerPlanId: plan.id,
+          network,
+          networkId: plan.networkId,
+          planType: planTypeFrom(plan.name),
+          name: plan.name,
+          validity: plan.validity,
+          providerCostKobo
+        }
+      });
 
-        const providerAmount = koboToNaira(pricing.providerCostKobo);
-        const sellingAmount = pricing.sellingPriceKobo
-          ? koboToNaira(pricing.sellingPriceKobo)
-          : defaultSellingPrice(providerAmount);
+      const providerAmount = koboToNaira(pricing.providerCostKobo);
+      const sellingAmount = pricing.sellingPriceKobo
+        ? koboToNaira(pricing.sellingPriceKobo)
+        : defaultSellingPrice(providerAmount);
 
-        return {
-          ...plan,
-          amount: sellingAmount,
-          providerAmount,
-          sellingAmount,
-          profit: sellingAmount - providerAmount,
-          isActive: pricing.isActive,
-          pricingId: pricing.id,
-          planType: pricing.planType ?? planTypeFrom(plan.name)
-        } satisfies PricedDataPlan;
-      })
-    );
+      priced.push({
+        ...plan,
+        amount: sellingAmount,
+        providerAmount,
+        sellingAmount,
+        profit: sellingAmount - providerAmount,
+        isActive: pricing.isActive,
+        pricingId: pricing.id,
+        planType: pricing.planType ?? planTypeFrom(plan.name)
+      } satisfies PricedDataPlan);
+    }
 
     return priced.filter((plan) => plan.isActive);
   }
@@ -146,18 +151,18 @@ export class DataPlanPricingService {
       where: params.network ? { network: params.network.toUpperCase() } : undefined
     });
 
-    await Promise.all(
-      rows.map((row) => {
-        const providerCost = koboToNaira(row.providerCostKobo);
-        const sellingPrice = Math.ceil(
-          providerCost + (providerCost * params.markupPercent) / 100 + params.markupNaira
-        );
-        return prisma.dataPlanPricing.update({
-          where: { id: row.id },
-          data: { sellingPriceKobo: nairaToKobo(sellingPrice) }
-        });
-      })
-    );
+    // Sequential for the same reason as applyPricing() above: connection_limit=1
+    // in DATABASE_URL means concurrent updates exhaust the pool and time out.
+    for (const row of rows) {
+      const providerCost = koboToNaira(row.providerCostKobo);
+      const sellingPrice = Math.ceil(
+        providerCost + (providerCost * params.markupPercent) / 100 + params.markupNaira
+      );
+      await prisma.dataPlanPricing.update({
+        where: { id: row.id },
+        data: { sellingPriceKobo: nairaToKobo(sellingPrice) }
+      });
+    }
 
     return { updated: rows.length };
   }
