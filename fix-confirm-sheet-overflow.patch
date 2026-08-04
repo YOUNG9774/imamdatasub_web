@@ -1,0 +1,29 @@
+diff --git a/imam_datasub/lib/features/buy_data/presentation/screens/buy_data_screen.dart b/imam_datasub/lib/features/buy_data/presentation/screens/buy_data_screen.dart
+index f569004..8daafed 100644
+--- a/imam_datasub/lib/features/buy_data/presentation/screens/buy_data_screen.dart
++++ b/imam_datasub/lib/features/buy_data/presentation/screens/buy_data_screen.dart
+@@ -165,8 +165,14 @@ class _BuyDataScreenState extends ConsumerState<BuyDataScreen> {
+       isScrollControlled: true,
+       useSafeArea: true,
+       builder: (_) => Padding(
+-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+-        child: Column(
++        padding: EdgeInsets.fromLTRB(
++          24,
++          8,
++          24,
++          32 + MediaQuery.of(context).viewInsets.bottom,
++        ),
++        child: SingleChildScrollView(
++          child: Column(
+           mainAxisSize: MainAxisSize.min,
+           children: [
+             Container(
+@@ -210,6 +216,7 @@ class _BuyDataScreenState extends ConsumerState<BuyDataScreen> {
+               child: const Text(AppStrings.cancel),
+             ),
+           ],
++          ),
+         ),
+       ),
+     );

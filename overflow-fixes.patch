@@ -1,0 +1,165 @@
+diff --git a/imam_datasub/lib/features/buy_data/presentation/screens/buy_data_screen.dart b/imam_datasub/lib/features/buy_data/presentation/screens/buy_data_screen.dart
+index f569004..4ee48bf 100644
+--- a/imam_datasub/lib/features/buy_data/presentation/screens/buy_data_screen.dart
++++ b/imam_datasub/lib/features/buy_data/presentation/screens/buy_data_screen.dart
+@@ -435,7 +435,15 @@ class _BuyDataScreenState extends ConsumerState<BuyDataScreen> {
+                         crossAxisCount: 2,
+                         crossAxisSpacing: 12,
+                         mainAxisSpacing: 12,
+-                        childAspectRatio: 1.5,
++                        // 1.5 was too tight: on narrower phones (~360dp wide)
++                        // the resulting cell height (~103px) was shorter than
++                        // DataPlanCard's actual content (~112px+ once the
++                        // description wraps to 2 lines and/or the discount
++                        // badge is present), causing a bottom RenderFlex
++                        // overflow on every card in the grid. 1.3 gives
++                        // enough headroom on small screens while still
++                        // looking compact on larger ones.
++                        childAspectRatio: 1.3,
+                       ),
+                       itemCount: plans.length,
+                       itemBuilder: (context, index) {
+diff --git a/imam_datasub/lib/shared/widgets/data_plan_card.dart b/imam_datasub/lib/shared/widgets/data_plan_card.dart
+index 2bfdc36..24b15ce 100644
+--- a/imam_datasub/lib/shared/widgets/data_plan_card.dart
++++ b/imam_datasub/lib/shared/widgets/data_plan_card.dart
+@@ -39,10 +39,11 @@ class DataPlanCard extends StatelessWidget {
+             width: isSelected ? 1.5 : 0.5,
+           ),
+         ),
+-        padding: const EdgeInsets.all(14),
++        padding: const EdgeInsets.all(12),
+         child: Column(
+           crossAxisAlignment: CrossAxisAlignment.start,
+           mainAxisAlignment: MainAxisAlignment.center,
++          mainAxisSize: MainAxisSize.min,
+           children: [
+             Row(
+               children: [
+diff --git a/imam_datasub/lib/shared/widgets/kd_bottom_sheet.dart b/imam_datasub/lib/shared/widgets/kd_bottom_sheet.dart
+index 8665890..43726c7 100644
+--- a/imam_datasub/lib/shared/widgets/kd_bottom_sheet.dart
++++ b/imam_datasub/lib/shared/widgets/kd_bottom_sheet.dart
+@@ -26,17 +26,26 @@ class KDBottomSheet extends StatelessWidget {
+       padding: EdgeInsets.only(
+         bottom: MediaQuery.of(context).viewInsets.bottom,
+       ),
+-      child: Container(
+-        padding: padding ??
+-            const EdgeInsets.fromLTRB(
+-                AppDimensions.screenPaddingH,
+-                8,
+-                AppDimensions.screenPaddingH,
+-                32),
+-        child: Column(
+-          mainAxisSize: MainAxisSize.min,
+-          crossAxisAlignment: CrossAxisAlignment.start,
+-          children: [
++      // SafeArea + SingleChildScrollView: every screen hands arbitrary
++      // content through `child`, so this shared shell has no way to know in
++      // advance whether it'll fit the available height (varies by device,
++      // by keyboard state, and by how much content the caller passes in).
++      // Scrolling instead of hard-overflowing is what makes this safe to
++      // reuse everywhere.
++      child: SafeArea(
++        top: false,
++        child: SingleChildScrollView(
++          child: Container(
++            padding: padding ??
++                const EdgeInsets.fromLTRB(
++                    AppDimensions.screenPaddingH,
++                    8,
++                    AppDimensions.screenPaddingH,
++                    32),
++            child: Column(
++              mainAxisSize: MainAxisSize.min,
++              crossAxisAlignment: CrossAxisAlignment.start,
++              children: [
+             if (showHandle)
+               Center(
+                 child: Container(
+@@ -53,11 +62,14 @@ class KDBottomSheet extends StatelessWidget {
+               Row(
+                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                 children: [
+-                  Text(
+-                    title!,
+-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+-                          fontWeight: FontWeight.w800,
+-                        ),
++                  Expanded(
++                    child: Text(
++                      title!,
++                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
++                            fontWeight: FontWeight.w800,
++                          ),
++                      overflow: TextOverflow.ellipsis,
++                    ),
+                   ),
+                   if (showClose)
+                     GestureDetector(
+@@ -77,8 +89,10 @@ class KDBottomSheet extends StatelessWidget {
+               ),
+             ] else
+               const SizedBox(height: 12),
+-            child,
+-          ],
++                child,
++              ],
++            ),
++          ),
+         ),
+       ),
+     );
+diff --git a/imam_datasub/lib/shared/widgets/pin_confirmation_sheet.dart b/imam_datasub/lib/shared/widgets/pin_confirmation_sheet.dart
+index 7aa4f13..b7c0c4e 100644
+--- a/imam_datasub/lib/shared/widgets/pin_confirmation_sheet.dart
++++ b/imam_datasub/lib/shared/widgets/pin_confirmation_sheet.dart
+@@ -122,16 +122,26 @@ class _PinConfirmationSheetState extends ConsumerState<_PinConfirmationSheet> {
+       padding: EdgeInsets.only(
+         bottom: MediaQuery.of(context).viewInsets.bottom,
+       ),
+-      child: Container(
+-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+-        decoration: const BoxDecoration(
+-          borderRadius: BorderRadius.vertical(
+-            top: Radius.circular(AppDimensions.bottomSheetRadius),
+-          ),
+-        ),
+-        child: Column(
+-          mainAxisSize: MainAxisSize.min,
+-          children: [
++      // SafeArea + SingleChildScrollView: this sheet's content height isn't
++      // fixed - it grows when the error message or the verifying spinner
++      // appears. On shorter screens (or when those extra bits show up at the
++      // same time), the fixed-size Column below can end up needing more
++      // vertical space than the sheet is given, which used to throw
++      // "A RenderFlex overflowed ... on the bottom". Scrolling instead of
++      // overflowing keeps every device/state combination safe.
++      child: SafeArea(
++        top: false,
++        child: SingleChildScrollView(
++          child: Container(
++            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
++            decoration: const BoxDecoration(
++              borderRadius: BorderRadius.vertical(
++                top: Radius.circular(AppDimensions.bottomSheetRadius),
++              ),
++            ),
++            child: Column(
++              mainAxisSize: MainAxisSize.min,
++              children: [
+             Container(
+               width: 40,
+               height: 4,
+@@ -220,7 +230,9 @@ class _PinConfirmationSheetState extends ConsumerState<_PinConfirmationSheet> {
+                 style: TextStyle(color: AppColors.neutral500),
+               ),
+             ),
+-          ],
++              ],
++            ),
++          ),
+         ),
+       ),
+     );

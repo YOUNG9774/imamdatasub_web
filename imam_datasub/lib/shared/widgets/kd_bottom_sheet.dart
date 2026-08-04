@@ -26,17 +26,26 @@ class KDBottomSheet extends StatelessWidget {
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: Container(
-        padding: padding ??
-            const EdgeInsets.fromLTRB(
-                AppDimensions.screenPaddingH,
-                8,
-                AppDimensions.screenPaddingH,
-                32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      // SafeArea + SingleChildScrollView: every screen hands arbitrary
+      // content through `child`, so this shared shell has no way to know in
+      // advance whether it'll fit the available height (varies by device,
+      // by keyboard state, and by how much content the caller passes in).
+      // Scrolling instead of hard-overflowing is what makes this safe to
+      // reuse everywhere.
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Container(
+            padding: padding ??
+                const EdgeInsets.fromLTRB(
+                    AppDimensions.screenPaddingH,
+                    8,
+                    AppDimensions.screenPaddingH,
+                    32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             if (showHandle)
               Center(
                 child: Container(
@@ -53,11 +62,14 @@ class KDBottomSheet extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    title!,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                  Expanded(
+                    child: Text(
+                      title!,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   if (showClose)
                     GestureDetector(
@@ -77,8 +89,10 @@ class KDBottomSheet extends StatelessWidget {
               ),
             ] else
               const SizedBox(height: 12),
-            child,
-          ],
+                child,
+              ],
+            ),
+          ),
         ),
       ),
     );

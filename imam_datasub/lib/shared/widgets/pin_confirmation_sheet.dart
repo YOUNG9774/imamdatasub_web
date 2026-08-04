@@ -122,16 +122,26 @@ class _PinConfirmationSheetState extends ConsumerState<_PinConfirmationSheet> {
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-        decoration: const BoxDecoration(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppDimensions.bottomSheetRadius),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      // SafeArea + SingleChildScrollView: this sheet's content height isn't
+      // fixed - it grows when the error message or the verifying spinner
+      // appears. On shorter screens (or when those extra bits show up at the
+      // same time), the fixed-size Column below can end up needing more
+      // vertical space than the sheet is given, which used to throw
+      // "A RenderFlex overflowed ... on the bottom". Scrolling instead of
+      // overflowing keeps every device/state combination safe.
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppDimensions.bottomSheetRadius),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
             Container(
               width: 40,
               height: 4,
@@ -220,7 +230,9 @@ class _PinConfirmationSheetState extends ConsumerState<_PinConfirmationSheet> {
                 style: TextStyle(color: AppColors.neutral500),
               ),
             ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

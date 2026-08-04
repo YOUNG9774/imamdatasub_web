@@ -165,8 +165,14 @@ class _BuyDataScreenState extends ConsumerState<BuyDataScreen> {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-        child: Column(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          8,
+          24,
+          32 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
@@ -210,6 +216,7 @@ class _BuyDataScreenState extends ConsumerState<BuyDataScreen> {
               child: const Text(AppStrings.cancel),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -435,7 +442,15 @@ class _BuyDataScreenState extends ConsumerState<BuyDataScreen> {
                         crossAxisCount: 2,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        childAspectRatio: 1.5,
+                        // 1.5 was too tight: on narrower phones (~360dp wide)
+                        // the resulting cell height (~103px) was shorter than
+                        // DataPlanCard's actual content (~112px+ once the
+                        // description wraps to 2 lines and/or the discount
+                        // badge is present), causing a bottom RenderFlex
+                        // overflow on every card in the grid. 1.3 gives
+                        // enough headroom on small screens while still
+                        // looking compact on larger ones.
+                        childAspectRatio: 1.3,
                       ),
                       itemCount: plans.length,
                       itemBuilder: (context, index) {

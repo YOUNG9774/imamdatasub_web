@@ -39,10 +39,11 @@ class DataPlanCard extends StatelessWidget {
             width: isSelected ? 1.5 : 0.5,
           ),
         ),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [

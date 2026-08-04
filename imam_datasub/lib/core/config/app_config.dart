@@ -35,7 +35,7 @@ class AppConfig {
       case 'staging':
         return 'https://staging.imamdatasub.ng/api';
       default:
-        return 'https://imamdatasubweb-production-4f62.up.railway.app/api';
+        return 'https://imamdatasubweb-production-d2d7.up.railway.app/api';
     }
   }
 
@@ -74,7 +74,7 @@ class AppConfig {
   static const double maxDailyTransfer = 500000.0;
 
   // â”€â”€ Referral â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  static const String referralScheme = 'https://imamdatasub.com.ng/ref/';
+  static const String referralScheme = 'https://imamdatasubweb-production-d2d7.up.railway.app//ref/';
   static const double referralCommissionRate = 0.02; // 2%
   static const double minCommissionWithdrawal = 500.0;
 
