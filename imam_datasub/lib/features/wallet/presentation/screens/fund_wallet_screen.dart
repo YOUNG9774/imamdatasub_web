@@ -43,9 +43,16 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
   Widget build(BuildContext context) {
     final wallet = ref.watch(walletNotifierProvider);
 
-    return Scaffold(
+    return PopScope(
+      // Block back-navigation while a funding request is in flight, so the
+      // user can't accidentally leave (and lose track of whether it went
+      // through) mid-request.
+      canPop: !_isProcessing,
+      child: Scaffold(
       appBar: AppBar(title: const Text(AppStrings.fundWallet)),
-      body: SafeArea(
+      body: Stack(
+        children: [
+          SafeArea(
         top: false,
         child: RefreshIndicator(
           onRefresh: () => ref.read(walletNotifierProvider.notifier).refresh(),
@@ -120,6 +127,10 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
             ),
           ),
         ),
+      ),
+          if (_isProcessing) const _ProcessingOverlay(),
+        ],
+      ),
       ),
     );
   }
@@ -490,6 +501,73 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
     if (value.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: value));
     if (mounted) context.showSnackBar('Copied');
+  }
+}
+
+/// Full-screen, unmissable overlay shown for the entire duration of a
+/// funding request (card payment, dynamic account creation, or coupon
+/// redemption). Previously the only loading feedback lived on the button
+/// inside the bottom sheet, which was popped closed the instant the button
+/// was tapped - so the spinner vanished with it and the screen looked
+/// completely idle while the request was actually still in flight. That's
+/// what made it look like nothing happened and invited double-tapping.
+class _ProcessingOverlay extends StatelessWidget {
+  const _ProcessingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: ColoredBox(
+        color: Colors.black.withValues(alpha: 0.55),
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 52,
+                  height: 52,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 4,
+                    valueColor: AlwaysStoppedAnimation(
+                      context.colors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Processing your request…',
+                  style: context.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Please wait, this only takes a moment.\nDo not tap back or close the app.',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: AppColors.neutral500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

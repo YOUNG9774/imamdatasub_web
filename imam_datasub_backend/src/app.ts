@@ -23,6 +23,7 @@ import { kycRoutes } from './routes/kyc.routes.js';
 import { legalRoutes } from './routes/legal.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
 import { referralRoutes } from './routes/referral.routes.js';
+import { supportRoutes } from './routes/support.routes.js';
 import { referralLinkRoutes } from './routes/referral-link.routes.js';
 import { resultRoutes } from './routes/result.routes.js';
 import { transactionRoutes } from './routes/transaction.routes.js';
@@ -113,6 +114,7 @@ export function createApp() {
   app.use('/api/kyc', kycRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/referral', referralRoutes);
+  app.use('/api/support', supportRoutes);
   app.use('/api/result', resultRoutes);
   app.use('/api', vtuRoutes);
   app.use('/api/transactions', transactionRoutes);
