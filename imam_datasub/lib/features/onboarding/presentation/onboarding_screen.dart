@@ -33,13 +33,13 @@ const _pages = [
   _OnboardData(
     title: AppStrings.onboarding1Title,
     body: AppStrings.onboarding1Body,
-    imageAsset: 'assets/images/onboarding/onboarding_1.webp',
+    imageAsset: 'assets/images/onboarding/onboarding_1.png',
     gradient: AppColors.primaryGradient,
   ),
   _OnboardData(
     title: AppStrings.onboarding2Title,
     body: AppStrings.onboarding2Body,
-    imageAsset: 'assets/images/onboarding/onboarding_2.webp',
+    imageAsset: 'assets/images/onboarding/onboarding_2.png',
     gradient: LinearGradient(
       colors: [AppColors.secondary500, AppColors.accent500],
     ),
@@ -47,8 +47,11 @@ const _pages = [
   _OnboardData(
     title: AppStrings.onboarding3Title,
     body: AppStrings.onboarding3Body,
-    imageAsset: 'assets/images/onboarding/onboarding_3.svg',
-    isSvg: true,
+    // The actual asset shipped in assets/images/onboarding/ is a raster
+    // PNG, not an SVG - isSvg stays false so this goes through
+    // Image.asset() like the other two pages instead of SvgPicture.asset(),
+    // which was failing to find a .svg file that never existed on disk.
+    imageAsset: 'assets/images/onboarding/onboarding_3.png',
     gradient: LinearGradient(
       colors: [AppColors.accent500, AppColors.primary600],
     ),
