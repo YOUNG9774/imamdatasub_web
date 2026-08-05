@@ -200,7 +200,8 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
             20,
             20 + MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: Column(
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -276,6 +277,7 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
                 gradient: AppColors.primaryGradient,
               ),
             ],
+            ),
           ),
         ),
       ),
@@ -364,7 +366,8 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
           20,
           20 + MediaQuery.of(sheetContext).viewInsets.bottom,
         ),
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -399,6 +402,7 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
               gradient: AppColors.primaryGradient,
             ),
           ],
+          ),
         ),
       ),
     );
@@ -407,10 +411,12 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
   void _showManualBankNotice() {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -439,6 +445,7 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
               gradient: AppColors.primaryGradient,
             ),
           ],
+          ),
         ),
       ),
     );
@@ -698,7 +705,8 @@ class _AccountDetailsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return SingleChildScrollView(
+      child: Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -752,6 +760,7 @@ class _AccountDetailsSheet extends StatelessWidget {
           ),
         ],
       ],
+      ),
     );
   }
 }

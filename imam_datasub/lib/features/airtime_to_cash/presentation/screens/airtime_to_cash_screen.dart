@@ -222,8 +222,14 @@ class _ConfirmAtcSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-      child: Column(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        8,
+        24,
+        32 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
@@ -257,6 +263,7 @@ class _ConfirmAtcSheet extends StatelessWidget {
             child: const Text(AppStrings.cancel),
           ),
         ],
+        ),
       ),
     );
   }

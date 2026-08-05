@@ -259,8 +259,14 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-      child: Column(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        8,
+        24,
+        32 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -319,6 +325,7 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
             gradient: AppColors.primaryGradient,
           ),
         ],
+        ),
       ),
     );
   }

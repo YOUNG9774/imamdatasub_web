@@ -414,7 +414,8 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
     return Padding(
       padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Padding(
+      child: SingleChildScrollView(
+        child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -453,6 +454,7 @@ class _WithdrawSheetState extends ConsumerState<_WithdrawSheet> {
               gradient: AppColors.primaryGradient,
             ),
           ],
+        ),
         ),
       ),
     );

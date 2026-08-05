@@ -216,10 +216,12 @@ class ProfileScreen extends ConsumerWidget {
     ];
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -249,6 +251,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -292,10 +295,12 @@ class ProfileScreen extends ConsumerWidget {
   static void _showAccountClosureSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       useSafeArea: true,
       builder: (sheetContext) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -344,6 +349,7 @@ class ProfileScreen extends ConsumerWidget {
               },
             ),
           ],
+          ),
         ),
       ),
     );
@@ -640,7 +646,8 @@ class _CredentialConfirmSheetState extends State<_CredentialConfirmSheet> {
         top: 20,
         bottom: 24 + MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: Column(
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -705,6 +712,7 @@ class _CredentialConfirmSheetState extends State<_CredentialConfirmSheet> {
               child: const Text('Confirm'),
             ),
         ],
+        ),
       ),
     );
   }
