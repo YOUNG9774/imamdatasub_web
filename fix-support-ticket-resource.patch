@@ -1,3 +1,15 @@
+diff --git a/imam_datasub_backend/package.json b/imam_datasub_backend/package.json
+index 938e755..71d460f 100644
+--- a/imam_datasub_backend/package.json
++++ b/imam_datasub_backend/package.json
+@@ -11,6 +11,7 @@
+     "build": "tsc",
+     "start": "node dist/server.js",
+     "start:prod": "node scripts/start-prod.mjs",
++    "postinstall": "prisma generate",
+     "prisma:generate": "prisma generate",
+     "prisma:migrate": "prisma migrate dev",
+     "prisma:migrate:deploy": "prisma migrate deploy",
 diff --git a/imam_datasub_backend/src/admin/resources/support-ticket.resource.ts b/imam_datasub_backend/src/admin/resources/support-ticket.resource.ts
 index 7351afd..4c3641e 100644
 --- a/imam_datasub_backend/src/admin/resources/support-ticket.resource.ts
