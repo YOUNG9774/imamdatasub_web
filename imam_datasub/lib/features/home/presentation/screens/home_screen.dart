@@ -51,7 +51,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final title = notice?.title.isNotEmpty == true
         ? notice!.title
-        : 'Welcome to IMAM DATASUB';
+        : 'Welcome to AHA DATASUB';
     final body = notice?.body.isNotEmpty == true
         ? notice!.body
         : 'Buy data, airtime, TV subscriptions, electricity tokens, education PINs and wallet services securely from your dashboard.';

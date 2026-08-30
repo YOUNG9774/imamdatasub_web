@@ -167,8 +167,8 @@ class ReferralScreen extends ConsumerWidget {
                           label: 'Share referral link',
                           icon: Icons.share_rounded,
                           onPressed: () => Share.share(
-                            'Join IMAM DATASUB and get cheap data & bills! Use my code ${stats.referralCode} to sign up:\n${stats.shareLink}',
-                            subject: 'Join IMAM DATASUB',
+                            'Join AHA DATASUB and get cheap data & bills! Use my code ${stats.referralCode} to sign up:\n${stats.shareLink}',
+                            subject: 'Join AHA DATASUB',
                           ),
                           gradient: AppColors.primaryGradient,
                           height: AppDimensions.buttonHeightMD,

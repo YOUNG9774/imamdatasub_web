@@ -42,7 +42,7 @@ class KDReceiptCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'IMAM DATASUB',
+                'AHA DATASUB',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
@@ -197,7 +197,7 @@ class KDReceiptCard extends StatelessWidget {
           // ── Footer ────────────────────────────────────────
           Center(
             child: Text(
-              'Thank you for using IMAM DATASUB',
+              'Thank you for using AHA DATASUB',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.neutral400,
                     fontSize: 11,

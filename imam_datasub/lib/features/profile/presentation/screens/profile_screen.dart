@@ -160,7 +160,7 @@ class ProfileScreen extends ConsumerWidget {
                     _ProfileTile(
                       icon: Icons.privacy_tip_outlined,
                       title: AppStrings.privacyPolicy,
-                      subtitle: 'How IMAM DATASUB uses and protects data',
+                      subtitle: 'How AHA DATASUB uses and protects data',
                       onTap: () => context.push(RouteNames.privacyPolicy),
                     ),
                     const Divider(height: 1, indent: 72),
@@ -470,7 +470,7 @@ class _ProfileHeader extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         Text(
-          user?.fullName.toUpperCase() ?? 'IMAM DATASUB',
+          user?.fullName.toUpperCase() ?? 'AHA DATASUB',
           textAlign: TextAlign.center,
           style: context.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w900,

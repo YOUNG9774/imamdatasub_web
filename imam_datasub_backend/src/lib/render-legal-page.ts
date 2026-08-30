@@ -31,7 +31,7 @@ export function renderLegalPage(params: {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${escapeHtml(params.title)} — IMAM DATASUB</title>
+  <title>${escapeHtml(params.title)} — AHA DATASUB</title>
   <style>
     :root { color-scheme: light; }
     * { box-sizing: border-box; }
@@ -69,7 +69,7 @@ export function renderLegalPage(params: {
 </head>
 <body>
   <div class="wrap">
-    <span class="brand">IMAM DATASUB</span>
+    <span class="brand">AHA DATASUB</span>
     <header>
       <h1>${escapeHtml(params.title)}</h1>
       <p class="effective">Effective date: ${escapeHtml(params.effectiveDate)}</p>

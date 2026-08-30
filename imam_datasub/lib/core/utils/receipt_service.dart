@@ -53,7 +53,7 @@ class ReceiptService {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
-                    'IMAM DATASUB',
+                    'AHA DATASUB',
                     style: pw.TextStyle(
                       fontSize: 18,
                       fontWeight: pw.FontWeight.bold,
@@ -195,7 +195,7 @@ class ReceiptService {
               pw.SizedBox(height: 12),
               pw.Center(
                 child: pw.Text(
-                  'Thank you for using Imam Datasub',
+                  'Thank you for using AHA DATASUB',
                   style: pw.TextStyle(fontSize: 10, color: _neutral500),
                 ),
               ),
@@ -229,7 +229,7 @@ class ReceiptService {
     final file = await savePdf(data);
     await Share.shareXFiles(
       [XFile(file.path)],
-      subject: '${data.title} Receipt — IMAM DATASUB',
+      subject: '${data.title} Receipt — AHA DATASUB',
       text:
           '${data.title} of ${AppFormatters.formatAmount(data.amount)} — Ref: ${data.reference}',
     );

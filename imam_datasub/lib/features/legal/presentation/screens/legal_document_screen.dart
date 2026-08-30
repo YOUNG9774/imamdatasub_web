@@ -138,7 +138,7 @@ const _privacySections = [
   (
     title: '1. Information we collect',
     body:
-        'IMAM DATASUB collects account information such as name, phone number, email address, login details, device information, wallet activity, transaction records, beneficiaries, KYC details where required, support messages, and payment references needed to provide VTU, bill payment, wallet, referral, notification and support services.',
+        'AHA DATASUB collects account information such as name, phone number, email address, login details, device information, wallet activity, transaction records, beneficiaries, KYC details where required, support messages, and payment references needed to provide VTU, bill payment, wallet, referral, notification and support services.',
   ),
   (
     title: '2. How we use information',
@@ -168,7 +168,7 @@ const _privacySections = [
   (
     title: '7. Contact',
     body:
-        'For privacy requests, complaints or support, contact IMAM DATASUB through the support email or WhatsApp numbers shown in the app.',
+        'For privacy requests, complaints or support, contact AHA DATASUB through the support email or WhatsApp numbers shown in the app.',
   ),
 ];
 
@@ -176,12 +176,12 @@ const _termsSections = [
   (
     title: '1. Acceptance of terms',
     body:
-        'By creating an account or using IMAM DATASUB, you agree to these Terms & Conditions. If you do not agree, do not use the application or services.',
+        'By creating an account or using AHA DATASUB, you agree to these Terms & Conditions. If you do not agree, do not use the application or services.',
   ),
   (
     title: '2. Services',
     body:
-        'IMAM DATASUB provides wallet-based VTU and bill payment services, including data, airtime, cable TV, electricity, result checker, recharge/data cards, referrals and related services. Availability, pricing, validity and provider response depend on third-party networks and service providers.',
+        'AHA DATASUB provides wallet-based VTU and bill payment services, including data, airtime, cable TV, electricity, result checker, recharge/data cards, referrals and related services. Availability, pricing, validity and provider response depend on third-party networks and service providers.',
   ),
   (
     title: '3. Wallet funding and payments',
@@ -191,31 +191,31 @@ const _termsSections = [
   (
     title: '4. Wallet balance and referral earnings',
     body:
-        'Wallet balance may only be used to purchase services within IMAM DATASUB, such as data, airtime, cable TV, electricity, result checker and recharge/data cards. Wallet balance cannot be transferred to another user\'s account and cannot be withdrawn or cashed out to a bank account, card or any external destination. Referral commission accrues separately as you refer other users; once released, referral commission can only be moved into your own wallet balance for use within the app — it is not paid out as cash and cannot be withdrawn to a bank account.',
+        'Wallet balance may only be used to purchase services within AHA DATASUB, such as data, airtime, cable TV, electricity, result checker and recharge/data cards. Wallet balance cannot be transferred to another user\'s account and cannot be withdrawn or cashed out to a bank account, card or any external destination. Referral commission accrues separately as you refer other users; once released, referral commission can only be moved into your own wallet balance for use within the app — it is not paid out as cash and cannot be withdrawn to a bank account.',
   ),
   (
     title: '5. Purchases and refunds',
     body:
-        'Before buying data, airtime or bills, confirm the network, phone number, package, amount and validity. Successful provider transactions are usually final. If a provider transaction fails after wallet debit, IMAM DATASUB will attempt to reverse or refund the wallet balance based on confirmed provider status.',
+        'Before buying data, airtime or bills, confirm the network, phone number, package, amount and validity. Successful provider transactions are usually final. If a provider transaction fails after wallet debit, AHA DATASUB will attempt to reverse or refund the wallet balance based on confirmed provider status.',
   ),
   (
     title: '6. Account security',
     body:
-        'You must keep your password, OTP, device access and transaction PIN confidential. Biometric login only protects access on your device. IMAM DATASUB is not responsible for losses caused by sharing login details, PINs, OTPs, or allowing unauthorized device access.',
+        'You must keep your password, OTP, device access and transaction PIN confidential. Biometric login only protects access on your device. AHA DATASUB is not responsible for losses caused by sharing login details, PINs, OTPs, or allowing unauthorized device access.',
   ),
   (
     title: '7. Prohibited use',
     body:
-        'You must not use IMAM DATASUB for fraud, unauthorized transactions, abuse of referral systems, attempts to transfer or cash out wallet balance or referral earnings outside the app, chargeback abuse, illegal activity, attempted hacking, API abuse, or any action that harms the platform, providers or other users.',
+        'You must not use AHA DATASUB for fraud, unauthorized transactions, abuse of referral systems, attempts to transfer or cash out wallet balance or referral earnings outside the app, chargeback abuse, illegal activity, attempted hacking, API abuse, or any action that harms the platform, providers or other users.',
   ),
   (
     title: '8. Limitation of liability',
     body:
-        'Services rely on telecom networks, payment processors, banks and VTU providers. IMAM DATASUB will make reasonable efforts to process and resolve transactions, but we are not liable for delays, outages, reversals, provider downtime, user-entered wrong details or events outside our control.',
+        'Services rely on telecom networks, payment processors, banks and VTU providers. AHA DATASUB will make reasonable efforts to process and resolve transactions, but we are not liable for delays, outages, reversals, provider downtime, user-entered wrong details or events outside our control.',
   ),
   (
     title: '9. Changes and contact',
     body:
-        'We may update these terms as the service grows. Continued use after updates means you accept the revised terms. For complaints or support, contact IMAM DATASUB through the official support channels in the app.',
+        'We may update these terms as the service grows. Continued use after updates means you accept the revised terms. For complaints or support, contact AHA DATASUB through the official support channels in the app.',
   ),
 ];

@@ -15,7 +15,7 @@ class AppConfig {
   static bool get isDebug => isDevelopment || isStaging;
 
   // â”€â”€ App Info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  static const String appName = 'IMAM DATASUB';
+  static const String appName = 'AHA DATASUB';
   static const String packageName = 'com.imamdatasub.app';
   static const String appVersion = '1.0.0';
   static const int buildNumber = 1;

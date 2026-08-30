@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Imam Datasub — Complete Color System
+/// AHA DATASUB — Complete Color System
 /// Primary: Deep Purple → Indigo
 /// Accent: Vivid Orange
 /// Semantic: Success Green, Warning Amber, Error Red

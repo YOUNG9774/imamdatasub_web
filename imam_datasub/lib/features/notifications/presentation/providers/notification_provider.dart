@@ -159,7 +159,7 @@ class FcmService {
     // Create notification channel
     const channel = AndroidNotificationChannel(
       'imam_datasub_notifications',
-      'IMAM DATASUB',
+      'AHA DATASUB',
       description: 'Transaction alerts and app notifications',
       importance: Importance.high,
       playSound: true,
@@ -207,7 +207,7 @@ class FcmService {
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'imam_datasub_notifications',
-          'IMAM DATASUB',
+          'AHA DATASUB',
           channelDescription: 'Transaction alerts and app notifications',
           importance: Importance.high,
           priority: Priority.high,

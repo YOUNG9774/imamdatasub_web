@@ -377,7 +377,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (!isAvailable) return false;
 
     final authResult = await biometricService.authenticate(
-      title: 'Unlock IMAM DATASUB',
+      title: 'Unlock AHA DATASUB',
       subtitle: 'Use your fingerprint or face to sign in',
     );
 

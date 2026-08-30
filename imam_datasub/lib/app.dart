@@ -21,7 +21,7 @@ class ImamDatasubApp extends ConsumerWidget {
       splitScreenMode: true,
       builder: (context, child) {
         return MaterialApp.router(
-          title: 'IMAM DATASUB',
+          title: 'AHA DATASUB',
           debugShowCheckedModeBanner: false,
 
           // ── Themes ────────────────────────────────────────

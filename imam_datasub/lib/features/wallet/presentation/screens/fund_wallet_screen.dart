@@ -178,7 +178,7 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
               'Transfer any amount from NGN100 and above. Your wallet will be credited automatically once payment is confirmed.',
           bankName: wallet?.virtualAccountBank ?? 'Bank',
           accountNumber: safeAccountNumber,
-          accountName: wallet?.virtualAccountName ?? 'IMAM DATASUB',
+          accountName: wallet?.virtualAccountName ?? 'AHA DATASUB',
           onCopy: _copy,
         ),
       ),
@@ -339,7 +339,7 @@ class _FundWalletScreenState extends ConsumerState<FundWalletScreen> {
                   'Transfer exactly ${AppFormatters.formatAmount(_selectedAmount)} to this account before it expires.',
               bankName: data['bank_name']?.toString() ?? 'Bank',
               accountNumber: data['account_number']?.toString() ?? '',
-              accountName: data['account_name']?.toString() ?? 'IMAM DATASUB',
+              accountName: data['account_name']?.toString() ?? 'AHA DATASUB',
               reference: data['reference']?.toString(),
               expiresAt: data['expires_at']?.toString(),
               onCopy: _copy,
@@ -658,7 +658,7 @@ class _VirtualAccountPanel extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            accountName ?? 'IMAM DATASUB',
+            accountName ?? 'AHA DATASUB',
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w700,

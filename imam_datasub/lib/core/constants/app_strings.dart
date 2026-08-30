@@ -2,7 +2,7 @@ abstract class AppStrings {
   AppStrings._();
 
   // ── App ────────────────────────────────────────────────────
-  static const String appName = 'IMAM DATASUB';
+  static const String appName = 'AHA DATASUB';
   static const String appTagline = 'Fast. Reliable. Affordable.';
   static const String appVersion = '1.0.0';
 
@@ -20,7 +20,7 @@ abstract class AppStrings {
   // ── Auth ──────────────────────────────────────────────────
   static const String welcomeBack = 'Welcome back';
   static const String createAccount = 'Create account';
-  static const String loginSubtitle = 'Sign in to continue to IMAM DATASUB';
+  static const String loginSubtitle = 'Sign in to continue to AHA DATASUB';
   static const String registerSubtitle =
       'Join thousands buying data & paying bills smarter';
   static const String emailLabel = 'Email address';
@@ -154,7 +154,7 @@ abstract class AppStrings {
   static const String language = 'Language';
   static const String privacyPolicy = 'Privacy policy';
   static const String termsOfService = 'Terms of service';
-  static const String aboutApp = 'About IMAM DATASUB';
+  static const String aboutApp = 'About AHA DATASUB';
 
   // ── Support ───────────────────────────────────────────────
   static const String support = 'Support';

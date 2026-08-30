@@ -119,7 +119,7 @@ void main() {
       final hive = container.read(hiveStorageProvider);
       await hive.initialize();
 
-      appLogger.i('App initialized, launching IMAM DATASUB');
+      appLogger.i('App initialized, launching AHA DATASUB');
 
       runApp(
         UncontrolledProviderScope(
