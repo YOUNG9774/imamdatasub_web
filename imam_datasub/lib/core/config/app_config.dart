@@ -92,9 +92,9 @@ class AppConfig {
   static const String supportEmailDisplay =
       'abdulmhassan02@gmail.com / imam.datasub21@gmail.com';
   static const String privacyPolicyUrl =
-      'https://imamdatasubweb-production-4f62.up.railway.app/privacy-policy';
+      'https://ahadatasub.up.railway.app/privacy-policy';
   static const String termsUrl =
-      'https://imamdatasubweb-production-4f62.up.railway.app/terms';
+      'https://ahadatasub.up.railway.app/terms';
   // Base for referral share links (ReferralEntity.shareLink appends /ref/CODE).
   // Previously pointed at imamdatasub.com.ng, a domain that was never live -
   // every shared referral link 404'd. No dedicated landing page exists yet for

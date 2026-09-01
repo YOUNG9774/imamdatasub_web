@@ -158,15 +158,16 @@ class _OnboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Hero image: full-bleed (no side padding) and takes the majority
-        // of the page's height so it reads as the star of the screen
-        // instead of a small centered thumbnail.
+        // Hero image: the source art is a tall 1080x1920 (9:16) portrait
+        // screenshot-style image, close to a phone's own aspect ratio.
+        // BoxFit.cover previously forced it to fill a shorter box and
+        // cropped the top/bottom off. BoxFit.contain shows the whole
+        // image, letterboxed if needed, so nothing gets cut off.
         Expanded(
-          flex: 6,
+          flex: 7,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-            child: SizedBox(
-              width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(32, 4, 32, 0),
+            child: Center(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(32),
@@ -183,15 +184,11 @@ class _OnboardPage extends StatelessWidget {
                   child: data.isSvg
                       ? SvgPicture.asset(
                           data.imageAsset,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
+                          fit: BoxFit.contain,
                         )
                       : Image.asset(
                           data.imageAsset,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
+                          fit: BoxFit.contain,
                         ),
                 ),
               ),
@@ -204,7 +201,7 @@ class _OnboardPage extends StatelessWidget {
 
         // Title + body: the remaining, smaller share of the page.
         Expanded(
-          flex: 4,
+          flex: 3,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(
