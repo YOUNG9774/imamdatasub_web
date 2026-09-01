@@ -25,7 +25,6 @@ A premium, production-grade VTU and fintech application built with Flutter.
 
 - **Buy Data** — MTN, Glo, Airtel, 9Mobile with auto-network detection
 - **Buy Airtime** — All networks with quick-amount chips
-- **Airtime to Cash** — Convert airtime at 85% rate
 - **Cable TV** — DStv, GOtv, StarTimes with smartcard validation
 - **Electricity** — All DISCOs with meter validation and token delivery
 - **Result Checker** — WAEC, NECO, NABTEB scratch cards

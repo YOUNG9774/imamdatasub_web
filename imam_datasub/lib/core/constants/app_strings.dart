@@ -61,7 +61,6 @@ abstract class AppStrings {
   // ── Services ──────────────────────────────────────────────
   static const String buyData = 'Buy data';
   static const String buyAirtime = 'Buy airtime';
-  static const String airtimeToCash = 'Airtime to cash';
   static const String cableTv = 'Cable TV';
   static const String electricity = 'Electricity';
   static const String waecChecker = 'WAEC result';

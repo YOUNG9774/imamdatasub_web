@@ -35,7 +35,7 @@ class AppConfig {
       case 'staging':
         return 'https://staging.imamdatasub.ng/api';
       default:
-        return 'https://imamdatasubweb-production-d2d7.up.railway.app/api';
+        return 'https://ahadatasub.up.railway.app/api';
     }
   }
 
@@ -111,7 +111,6 @@ class AppConfig {
   static bool enableBiometric = true;
   static bool enableReferral = true;
   static bool enableLiveChat = true;
-  static bool enableAirtimeToCash = true;
   static bool enableBulkSms = true;
   static bool enableRechargeCard = true;
 

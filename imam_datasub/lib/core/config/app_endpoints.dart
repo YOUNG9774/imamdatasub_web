@@ -50,7 +50,6 @@ class AppEndpoints {
   // Airtime
   static String get purchaseAirtime => '$_base/airtime/purchase';
   static String get airtimeHistory => '$_base/airtime/history';
-  static String get airtimeToCash => '$_base/airtime/cash';
 
   // Cable TV
   static String get cableProviders => '$_base/cable/providers';

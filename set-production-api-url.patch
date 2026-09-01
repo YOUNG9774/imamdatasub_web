@@ -1,0 +1,13 @@
+diff --git a/imam_datasub/lib/core/config/app_config.dart b/imam_datasub/lib/core/config/app_config.dart
+index 035bcc5..a7889fc 100644
+--- a/imam_datasub/lib/core/config/app_config.dart
++++ b/imam_datasub/lib/core/config/app_config.dart
+@@ -35,7 +35,7 @@ class AppConfig {
+       case 'staging':
+         return 'https://staging.imamdatasub.ng/api';
+       default:
+-        return 'https://imamdatasubweb-production-d2d7.up.railway.app/api';
++        return 'https://ahadatasub.up.railway.app/api';
+     }
+   }
+ 

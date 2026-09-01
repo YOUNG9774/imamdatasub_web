@@ -1,0 +1,557 @@
+diff --git a/imam_datasub/.gitignore b/imam_datasub/.gitignore
+index ae22021..9537ca3 100644
+--- a/imam_datasub/.gitignore
++++ b/imam_datasub/.gitignore
+@@ -40,6 +40,10 @@ lib/core/config/firebase_options.dart
+ .env.development
+ .env.staging
+ .env.production
++.env.*.local
++
++# dart-define files — contain API base URLs, Supabase keys, etc.
++dart_define*.json
+ 
+ # Generated files
+ *.g.dart
+diff --git a/imam_datasub/README.md b/imam_datasub/README.md
+index 2aa327e..a824e64 100644
+--- a/imam_datasub/README.md
++++ b/imam_datasub/README.md
+@@ -25,7 +25,6 @@ A premium, production-grade VTU and fintech application built with Flutter.
+ 
+ - **Buy Data** — MTN, Glo, Airtel, 9Mobile with auto-network detection
+ - **Buy Airtime** — All networks with quick-amount chips
+-- **Airtime to Cash** — Convert airtime at 85% rate
+ - **Cable TV** — DStv, GOtv, StarTimes with smartcard validation
+ - **Electricity** — All DISCOs with meter validation and token delivery
+ - **Result Checker** — WAEC, NECO, NABTEB scratch cards
+diff --git a/imam_datasub/dart_define_prod.json b/imam_datasub/dart_define_prod.json
+deleted file mode 100644
+index dd7a7b2..0000000
+--- a/imam_datasub/dart_define_prod.json
++++ /dev/null
+@@ -1,6 +0,0 @@
+-{
+-  "APP_ENV": "production",
+-  "API_BASE_URL": "https://imamdatasubweb-production-d2d7.up.railway.app/api",
+-  "SUPABASE_URL": "https://szxzxumweasuwqvubbss.supabase.co",
+-  "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6eHp4dW13ZWFzdXdxdnViYnNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMjEzOTQsImV4cCI6MjA5OTU5NzM5NH0.pGpj_RDwagVZuYbn45Lr1MdzKBJGg_58b7QwpE0Hyx8"
+-}
+diff --git a/imam_datasub/dart_define_prod.json.example b/imam_datasub/dart_define_prod.json.example
+new file mode 100644
+index 0000000..1975351
+--- /dev/null
++++ b/imam_datasub/dart_define_prod.json.example
+@@ -0,0 +1,6 @@
++{
++  "APP_ENV": "production",
++  "API_BASE_URL": "https://your-backend-host.example.com/api",
++  "SUPABASE_URL": "https://your-project-ref.supabase.co",
++  "SUPABASE_ANON_KEY": "your-supabase-anon-key"
++}
+diff --git a/imam_datasub/lib/core/config/app_config.dart b/imam_datasub/lib/core/config/app_config.dart
+index 035bcc5..cbdc5d2 100644
+--- a/imam_datasub/lib/core/config/app_config.dart
++++ b/imam_datasub/lib/core/config/app_config.dart
+@@ -111,7 +111,6 @@ class AppConfig {
+   static bool enableBiometric = true;
+   static bool enableReferral = true;
+   static bool enableLiveChat = true;
+-  static bool enableAirtimeToCash = true;
+   static bool enableBulkSms = true;
+   static bool enableRechargeCard = true;
+ 
+diff --git a/imam_datasub/lib/core/config/app_endpoints.dart b/imam_datasub/lib/core/config/app_endpoints.dart
+index d68766e..3e2b9fd 100644
+--- a/imam_datasub/lib/core/config/app_endpoints.dart
++++ b/imam_datasub/lib/core/config/app_endpoints.dart
+@@ -50,7 +50,6 @@ class AppEndpoints {
+   // Airtime
+   static String get purchaseAirtime => '$_base/airtime/purchase';
+   static String get airtimeHistory => '$_base/airtime/history';
+-  static String get airtimeToCash => '$_base/airtime/cash';
+ 
+   // Cable TV
+   static String get cableProviders => '$_base/cable/providers';
+diff --git a/imam_datasub/lib/core/constants/app_strings.dart b/imam_datasub/lib/core/constants/app_strings.dart
+index 2772fc3..cc46f45 100644
+--- a/imam_datasub/lib/core/constants/app_strings.dart
++++ b/imam_datasub/lib/core/constants/app_strings.dart
+@@ -61,7 +61,6 @@ abstract class AppStrings {
+   // ── Services ──────────────────────────────────────────────
+   static const String buyData = 'Buy data';
+   static const String buyAirtime = 'Buy airtime';
+-  static const String airtimeToCash = 'Airtime to cash';
+   static const String cableTv = 'Cable TV';
+   static const String electricity = 'Electricity';
+   static const String waecChecker = 'WAEC result';
+diff --git a/imam_datasub/lib/core/router/app_router.dart b/imam_datasub/lib/core/router/app_router.dart
+index f25c625..a918a01 100644
+--- a/imam_datasub/lib/core/router/app_router.dart
++++ b/imam_datasub/lib/core/router/app_router.dart
+@@ -41,7 +41,6 @@ import '../../features/settings/presentation/screens/settings_screen.dart';
+ import '../../features/notifications/presentation/screens/notifications_screen.dart';
+ import '../../features/support/presentation/screens/support_screen.dart';
+ import '../../features/kyc/presentation/screens/kyc_screen.dart';
+-import '../../features/airtime_to_cash/presentation/screens/airtime_to_cash_screen.dart';
+ import '../../features/admin/presentation/screens/admin_data_pricing_screen.dart';
+ import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
+ import '../../features/admin/presentation/screens/admin_service_pricing_screen.dart';
+@@ -171,10 +170,6 @@ final routerProvider = Provider<GoRouter>((ref) {
+                     pageBuilder: (_, state) =>
+                         _slide(state, const BuyAirtimeScreen()),
+                   ),
+-                  GoRoute(
+-                    path: 'airtime-to-cash',
+-                    builder: (_, __) => const AirtimeToCashScreen(),
+-                  ),
+                   GoRoute(
+                     path: 'cable',
+                     builder: (_, __) => const CableTvScreen(),
+diff --git a/imam_datasub/lib/core/router/route_names.dart b/imam_datasub/lib/core/router/route_names.dart
+index 72c96ad..e555b22 100644
+--- a/imam_datasub/lib/core/router/route_names.dart
++++ b/imam_datasub/lib/core/router/route_names.dart
+@@ -34,7 +34,6 @@ abstract class RouteNames {
+   // ── Services ──────────────────────────────────────────────
+   static const buyData = '/home/services/data';
+   static const buyAirtime = '/home/services/airtime';
+-  static const airtimeToCash = '/home/services/airtime-to-cash';
+   static const cableTv = '/home/services/cable';
+   static const electricity = '/home/services/electricity';
+   static const waecChecker = '/home/services/waec';
+diff --git a/imam_datasub/lib/features/airtime_to_cash/presentation/providers/atc_provider.dart b/imam_datasub/lib/features/airtime_to_cash/presentation/providers/atc_provider.dart
+deleted file mode 100644
+index 342be75..0000000
+--- a/imam_datasub/lib/features/airtime_to_cash/presentation/providers/atc_provider.dart
++++ /dev/null
+@@ -1,105 +0,0 @@
+-import 'package:dio/dio.dart';
+-import 'package:flutter_riverpod/flutter_riverpod.dart';
+-import '../../../../core/config/app_endpoints.dart';
+-import '../../../../core/di/injection.dart';
+-import '../../../../core/error/error_handler.dart';
+-import '../../../../core/error/exceptions.dart';
+-import '../../../buy_data/domain/entities/data_plan_entity.dart';
+-
+-class AtcResult {
+-  const AtcResult({required this.success, required this.reference, required this.message, this.payoutAmount});
+-  final bool success;
+-  final String reference;
+-  final String message;
+-  final double? payoutAmount;
+-
+-  factory AtcResult.fromJson(Map<String, dynamic> json) {
+-    final data = json['data'] as Map<String, dynamic>? ?? json;
+-    return AtcResult(
+-      success: json['status'] == true || json['status'] == 'success',
+-      reference: data['reference']?.toString() ?? '',
+-      message: json['message']?.toString() ?? '',
+-      payoutAmount: data['payout_amount'] != null
+-          ? double.tryParse(data['payout_amount'].toString())
+-          : null,
+-    );
+-  }
+-}
+-
+-final atcRateProvider = Provider<double>((_) => 0.85); // 85% payout rate, configurable via remote config
+-
+-class AtcState {
+-  const AtcState({
+-    this.amount = 0,
+-    this.phone = '',
+-    this.isProcessing = false,
+-    this.errorMessage,
+-  });
+-
+-  final double amount;
+-  final String phone;
+-  final bool isProcessing;
+-  final String? errorMessage;
+-
+-  bool get canProceed => amount >= 100 && phone.length == 11;
+-
+-  AtcState copyWith({
+-    double? amount,
+-    String? phone,
+-    bool? isProcessing,
+-    String? errorMessage,
+-    bool clearError = false,
+-  }) {
+-    return AtcState(
+-      amount: amount ?? this.amount,
+-      phone: phone ?? this.phone,
+-      isProcessing: isProcessing ?? this.isProcessing,
+-      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+-    );
+-  }
+-}
+-
+-class AtcNotifier extends StateNotifier<AtcState> {
+-  AtcNotifier(this._ref) : super(const AtcState());
+-  final Ref _ref;
+-
+-  void setAmount(double amount) => state = state.copyWith(amount: amount, clearError: true);
+-  void setPhone(String phone) => state = state.copyWith(phone: phone, clearError: true);
+-  void reset() => state = const AtcState();
+-
+-  Future<AtcResult?> submit(NetworkProvider network) async {
+-    if (!state.canProceed) return null;
+-    state = state.copyWith(isProcessing: true, clearError: true);
+-
+-    final dio = _ref.read(dioClientProvider);
+-    final hive = _ref.read(hiveStorageProvider);
+-
+-    try {
+-      final response = await dio.post(
+-        AppEndpoints.airtimeToCash,
+-        data: {
+-          'network': network.code,
+-          'phone': state.phone,
+-          'amount': state.amount,
+-        },
+-      );
+-      final result = AtcResult.fromJson(response.data as Map<String, dynamic>);
+-      if (result.success) {
+-        await hive.remove('wallet_balance');
+-      }
+-      state = state.copyWith(isProcessing: false);
+-      return result;
+-    } on DioException catch (e) {
+-      final exception = ErrorHandler.handleException(e);
+-      state = state.copyWith(isProcessing: false, errorMessage: exception.message);
+-      return null;
+-    } catch (e) {
+-      state = state.copyWith(isProcessing: false, errorMessage: e.toString());
+-      return null;
+-    }
+-  }
+-}
+-
+-final atcNotifierProvider = StateNotifierProvider.autoDispose<AtcNotifier, AtcState>((ref) {
+-  return AtcNotifier(ref);
+-});
+\ No newline at end of file
+diff --git a/imam_datasub/lib/features/airtime_to_cash/presentation/screens/airtime_to_cash_screen.dart b/imam_datasub/lib/features/airtime_to_cash/presentation/screens/airtime_to_cash_screen.dart
+deleted file mode 100644
+index b4c110d..0000000
+--- a/imam_datasub/lib/features/airtime_to_cash/presentation/screens/airtime_to_cash_screen.dart
++++ /dev/null
+@@ -1,300 +0,0 @@
+-import 'package:flutter/material.dart';
+-import 'package:flutter_riverpod/flutter_riverpod.dart';
+-import '../../../../core/constants/app_colors.dart';
+-import '../../../../core/constants/app_dimensions.dart';
+-import '../../../../core/constants/app_strings.dart';
+-import '../../../../core/utils/extensions.dart';
+-import '../../../../core/utils/formatters.dart';
+-import '../../../../core/utils/validators.dart';
+-import '../../../../shared/widgets/kd_button.dart';
+-import '../../../../shared/widgets/kd_card.dart';
+-import '../../../../shared/widgets/kd_text_field.dart';
+-import '../../../../shared/widgets/network_selector.dart';
+-import '../../../../shared/widgets/pin_confirmation_sheet.dart';
+-import '../../../../shared/widgets/purchase_success_view.dart';
+-import '../../../buy_data/domain/entities/data_plan_entity.dart';
+-import '../../../buy_data/presentation/providers/buy_data_provider.dart'
+-    show selectedNetworkProvider;
+-import '../providers/atc_provider.dart';
+-
+-class AirtimeToCashScreen extends ConsumerStatefulWidget {
+-  const AirtimeToCashScreen({super.key});
+-
+-  @override
+-  ConsumerState<AirtimeToCashScreen> createState() =>
+-      _AirtimeToCashScreenState();
+-}
+-
+-class _AirtimeToCashScreenState extends ConsumerState<AirtimeToCashScreen> {
+-  final _phoneController = TextEditingController();
+-  final _amountController = TextEditingController();
+-
+-  @override
+-  void dispose() {
+-    _phoneController.dispose();
+-    _amountController.dispose();
+-    super.dispose();
+-  }
+-
+-  Future<void> _handleSubmit() async {
+-    context.hideKeyboard();
+-    final state = ref.read(atcNotifierProvider);
+-    final network = ref.read(selectedNetworkProvider);
+-
+-    if (!state.canProceed) {
+-      context.showSnackBar('Enter a valid phone number and amount',
+-          isError: true);
+-      return;
+-    }
+-
+-    final rate = ref.read(atcRateProvider);
+-    final payout = state.amount * rate;
+-
+-    final confirmed = await showModalBottomSheet<bool>(
+-      context: context,
+-      isScrollControlled: true,
+-      useSafeArea: true,
+-      builder: (_) => _ConfirmAtcSheet(
+-        network: network,
+-        airtimeAmount: state.amount,
+-        payoutAmount: payout,
+-        phone: _phoneController.text,
+-      ),
+-    );
+-    if (confirmed != true) return;
+-
+-    final pinVerified = await showPinConfirmationSheet(
+-      context: context,
+-      ref: ref,
+-      subtitle: 'Confirm airtime-to-cash conversion',
+-    );
+-    if (!pinVerified || !mounted) return;
+-
+-    final result = await ref.read(atcNotifierProvider.notifier).submit(network);
+-    if (!mounted) return;
+-
+-    if (result != null && result.success) {
+-      Navigator.of(context).push(
+-        MaterialPageRoute(
+-          builder: (_) => PurchaseSuccessView(
+-            title: 'Airtime to Cash',
+-            amount: result.payoutAmount ?? payout,
+-            reference: result.reference,
+-            details: [
+-              MapEntry('Network', network.label),
+-              MapEntry('Airtime amount',
+-                  AppFormatters.formatAmount(state.amount)),
+-              MapEntry(
+-                  'Phone', AppFormatters.formatPhone(_phoneController.text)),
+-            ],
+-          ),
+-        ),
+-      );
+-    } else {
+-      final error = ref.read(atcNotifierProvider).errorMessage;
+-      context.showSnackBar(error ?? 'Request failed. Please try again.',
+-          isError: true);
+-    }
+-  }
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    final network = ref.watch(selectedNetworkProvider);
+-    final state = ref.watch(atcNotifierProvider);
+-    final rate = ref.watch(atcRateProvider);
+-    final payout = state.amount * rate;
+-
+-    return Scaffold(
+-      appBar: AppBar(title: const Text(AppStrings.airtimeToCash)),
+-      body: SafeArea(
+-        top: false,
+-        child: SingleChildScrollView(
+-          padding: const EdgeInsets.symmetric(
+-              horizontal: AppDimensions.screenPaddingH, vertical: 12),
+-          child: Column(
+-            crossAxisAlignment: CrossAxisAlignment.start,
+-            children: [
+-              KDCard(
+-                backgroundColor: AppColors.warning50,
+-                border: Border.all(color: AppColors.warning100),
+-                child: Row(
+-                  children: [
+-                    const Icon(Icons.info_outline_rounded,
+-                        color: AppColors.warning600, size: 20),
+-                    const SizedBox(width: 10),
+-                    Expanded(
+-                      child: Text(
+-                        'You receive ${(rate * 100).toStringAsFixed(0)}% of the airtime value as cash. Processing takes up to 30 minutes.',
+-                        style: const TextStyle(
+-                            fontSize: 12.5, color: AppColors.warning700),
+-                      ),
+-                    ),
+-                  ],
+-                ),
+-              ),
+-
+-              const SizedBox(height: 20),
+-              Text(AppStrings.selectNetwork,
+-                  style: context.textTheme.titleSmall),
+-              const SizedBox(height: 10),
+-              NetworkSelector(
+-                selected: network,
+-                onChanged: (n) =>
+-                    ref.read(selectedNetworkProvider.notifier).state = n,
+-              ),
+-
+-              const SizedBox(height: 24),
+-              Text(AppStrings.enterPhoneNumber,
+-                  style: context.textTheme.titleSmall),
+-              const SizedBox(height: 10),
+-              KDPhoneField(
+-                controller: _phoneController,
+-                onChanged: (v) =>
+-                    ref.read(atcNotifierProvider.notifier).setPhone(v),
+-                validator: AppValidators.phone,
+-              ),
+-
+-              const SizedBox(height: 20),
+-              Text('Airtime amount', style: context.textTheme.titleSmall),
+-              const SizedBox(height: 10),
+-              KDAmountField(
+-                controller: _amountController,
+-                onChanged: (v) {
+-                  final parsed = double.tryParse(v) ?? 0;
+-                  ref.read(atcNotifierProvider.notifier).setAmount(parsed);
+-                },
+-                validator: (v) => AppValidators.amount(v, min: 100),
+-              ),
+-
+-              if (state.amount > 0) ...[
+-                const SizedBox(height: 16),
+-                KDCard(
+-                  child: Row(
+-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+-                    children: [
+-                      Text('You will receive',
+-                          style: context.textTheme.bodyMedium),
+-                      Text(
+-                        AppFormatters.formatAmount(payout),
+-                        style: context.textTheme.titleMedium?.copyWith(
+-                          fontWeight: FontWeight.w800,
+-                          color: AppColors.success600,
+-                        ),
+-                      ),
+-                    ],
+-                  ),
+-                ),
+-              ],
+-
+-              const SizedBox(height: 100),
+-            ],
+-          ),
+-        ),
+-      ),
+-      bottomNavigationBar: SafeArea(
+-        child: Padding(
+-          padding: const EdgeInsets.all(AppDimensions.screenPaddingH),
+-          child: KDButton(
+-            label: AppStrings.proceed,
+-            onPressed: state.canProceed ? _handleSubmit : null,
+-            isLoading: state.isProcessing,
+-            gradient: AppColors.primaryGradient,
+-          ),
+-        ),
+-      ),
+-    );
+-  }
+-}
+-
+-class _ConfirmAtcSheet extends StatelessWidget {
+-  const _ConfirmAtcSheet({
+-    required this.network,
+-    required this.airtimeAmount,
+-    required this.payoutAmount,
+-    required this.phone,
+-  });
+-
+-  final NetworkProvider network;
+-  final double airtimeAmount;
+-  final double payoutAmount;
+-  final String phone;
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    return Padding(
+-      padding: EdgeInsets.fromLTRB(
+-        24,
+-        8,
+-        24,
+-        32 + MediaQuery.of(context).viewInsets.bottom,
+-      ),
+-      child: SingleChildScrollView(
+-        child: Column(
+-        mainAxisSize: MainAxisSize.min,
+-        children: [
+-          Container(
+-            width: 40,
+-            height: 4,
+-            decoration: BoxDecoration(
+-              color: AppColors.neutral300,
+-              borderRadius: BorderRadius.circular(2),
+-            ),
+-          ),
+-          const SizedBox(height: 20),
+-          Text('Confirm conversion',
+-              style: context.textTheme.titleLarge
+-                  ?.copyWith(fontWeight: FontWeight.w800)),
+-          const SizedBox(height: 20),
+-          _Row('Network', network.label),
+-          _Row('Phone', AppFormatters.formatPhone(phone)),
+-          _Row('Airtime amount', AppFormatters.formatAmount(airtimeAmount)),
+-          const Divider(height: 28),
+-          _Row('You receive', AppFormatters.formatAmount(payoutAmount),
+-              isTotal: true),
+-          const SizedBox(height: 24),
+-          KDButton(
+-            label: AppStrings.confirm,
+-            onPressed: () => Navigator.of(context).pop(true),
+-            gradient: AppColors.primaryGradient,
+-          ),
+-          const SizedBox(height: 8),
+-          TextButton(
+-            onPressed: () => Navigator.of(context).pop(false),
+-            child: const Text(AppStrings.cancel),
+-          ),
+-        ],
+-        ),
+-      ),
+-    );
+-  }
+-}
+-
+-class _Row extends StatelessWidget {
+-  const _Row(this.label, this.value, {this.isTotal = false});
+-  final String label;
+-  final String value;
+-  final bool isTotal;
+-
+-  @override
+-  Widget build(BuildContext context) {
+-    return Padding(
+-      padding: const EdgeInsets.symmetric(vertical: 6),
+-      child: Row(
+-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+-        children: [
+-          Text(label,
+-              style: context.textTheme.bodyMedium
+-                  ?.copyWith(color: isTotal ? null : AppColors.neutral500)),
+-          Text(
+-            value,
+-            style: context.textTheme.bodyMedium?.copyWith(
+-              fontWeight: FontWeight.w700,
+-              fontSize: isTotal ? 18 : 14,
+-              color: isTotal ? AppColors.success600 : null,
+-            ),
+-          ),
+-        ],
+-      ),
+-    );
+-  }
+-}
+diff --git a/imam_datasub/lib/features/home/presentation/screens/services_screen.dart b/imam_datasub/lib/features/home/presentation/screens/services_screen.dart
+index 36fc2dd..94101e9 100644
+--- a/imam_datasub/lib/features/home/presentation/screens/services_screen.dart
++++ b/imam_datasub/lib/features/home/presentation/screens/services_screen.dart
+@@ -34,12 +34,6 @@ const _services = [
+     color: AppColors.secondary500,
+     route: RouteNames.buyAirtime,
+   ),
+-  _ServiceItem(
+-    label: 'Airtime to Cash',
+-    icon: Icons.currency_exchange_rounded,
+-    color: AppColors.success500,
+-    route: RouteNames.airtimeToCash,
+-  ),
+   _ServiceItem(
+     label: 'Cable TV',
+     icon: Icons.tv_rounded,

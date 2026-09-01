@@ -34,7 +34,6 @@ abstract class RouteNames {
   // ── Services ──────────────────────────────────────────────
   static const buyData = '/home/services/data';
   static const buyAirtime = '/home/services/airtime';
-  static const airtimeToCash = '/home/services/airtime-to-cash';
   static const cableTv = '/home/services/cable';
   static const electricity = '/home/services/electricity';
   static const waecChecker = '/home/services/waec';

@@ -40,6 +40,10 @@ lib/core/config/firebase_options.dart
 .env.development
 .env.staging
 .env.production
+.env.*.local
+
+# dart-define files — contain API base URLs, Supabase keys, etc.
+dart_define*.json
 
 # Generated files
 *.g.dart

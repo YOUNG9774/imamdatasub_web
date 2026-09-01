@@ -1,0 +1,14 @@
+diff --git a/imam_datasub/lib/features/splash/presentation/splash_screen.dart b/imam_datasub/lib/features/splash/presentation/splash_screen.dart
+index e1c2551..77b9efe 100644
+--- a/imam_datasub/lib/features/splash/presentation/splash_screen.dart
++++ b/imam_datasub/lib/features/splash/presentation/splash_screen.dart
+@@ -57,6 +57,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
+       case AuthStatus.pinSetupRequired:
+         context.go(RouteNames.pinSetup);
+         return;
++      case AuthStatus.transactionPinSetupRequired:
++        context.go(RouteNames.transactionPinSetup);
++        return;
+       case AuthStatus.unauthenticated:
+       case AuthStatus.loading:
+         break;

@@ -35,12 +35,6 @@ const _services = [
     route: RouteNames.buyAirtime,
   ),
   _ServiceItem(
-    label: 'Airtime to Cash',
-    icon: Icons.currency_exchange_rounded,
-    color: AppColors.success500,
-    route: RouteNames.airtimeToCash,
-  ),
-  _ServiceItem(
     label: 'Cable TV',
     icon: Icons.tv_rounded,
     color: AppColors.accent500,

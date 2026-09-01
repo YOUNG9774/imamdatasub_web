@@ -41,7 +41,6 @@ import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/support/presentation/screens/support_screen.dart';
 import '../../features/kyc/presentation/screens/kyc_screen.dart';
-import '../../features/airtime_to_cash/presentation/screens/airtime_to_cash_screen.dart';
 import '../../features/admin/presentation/screens/admin_data_pricing_screen.dart';
 import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/screens/admin_service_pricing_screen.dart';
@@ -170,10 +169,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'airtime',
                     pageBuilder: (_, state) =>
                         _slide(state, const BuyAirtimeScreen()),
-                  ),
-                  GoRoute(
-                    path: 'airtime-to-cash',
-                    builder: (_, __) => const AirtimeToCashScreen(),
                   ),
                   GoRoute(
                     path: 'cable',
