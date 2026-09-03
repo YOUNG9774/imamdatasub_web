@@ -1,0 +1,190 @@
+diff --git a/imam_datasub_backend/src/lib/render-delete-account-page.ts b/imam_datasub_backend/src/lib/render-delete-account-page.ts
+new file mode 100644
+index 0000000..7aeb3de
+--- /dev/null
++++ b/imam_datasub_backend/src/lib/render-delete-account-page.ts
+@@ -0,0 +1,156 @@
++function escapeHtml(value: string) {
++  return value
++    .replace(/&/g, '&amp;')
++    .replace(/</g, '&lt;')
++    .replace(/>/g, '&gt;');
++}
++
++/**
++ * Renders the public "Delete account URL" page required by Google Play's
++ * Data safety form. This route must be reachable with no login and no app
++ * install (Play's reviewer opens it directly), so it cannot depend on the
++ * authenticated DELETE /api/user/account endpoint. It instead documents the
++ * in-app self-service flow and gives a no-login fallback via email/WhatsApp.
++ *
++ * Keep the retention wording in sync with the in-app confirmation copy in
++ * imam_datasub/lib/features/profile/presentation/screens/profile_screen.dart
++ * ("Transaction records are retained where required by law.").
++ */
++export function renderDeleteAccountPage(params: {
++  supportEmail: string;
++  supportWhatsApp: string;
++}) {
++  const primaryEmail = params.supportEmail.split('/')[0].trim();
++  const whatsappDigits = params.supportWhatsApp.replace(/\+/g, '');
++  const mailSubject = encodeURIComponent('Account deletion request — AHA DATASUB');
++  const mailBody = encodeURIComponent(
++    'Please delete my AHA DATASUB account.\n\nRegistered phone number:\nRegistered email (if any):\nReason (optional):'
++  );
++  const waText = encodeURIComponent(
++    'Hi, I would like to request deletion of my AHA DATASUB account. My registered phone number is: '
++  );
++
++  return `<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>Delete Your Account — AHA DATASUB</title>
++  <style>
++    :root { color-scheme: light; }
++    * { box-sizing: border-box; }
++    body {
++      margin: 0;
++      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
++      background: #f7f8fa;
++      color: #1a1d21;
++      line-height: 1.6;
++    }
++    .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
++    header { margin-bottom: 28px; }
++    h1 { font-size: 26px; font-weight: 800; margin: 0 0 6px; }
++    .sub { color: #6b7280; font-size: 14px; margin: 0; }
++    section { margin-bottom: 26px; }
++    h2 { font-size: 17px; font-weight: 700; margin: 0 0 10px; }
++    p { margin: 0 0 10px; color: #33383f; font-size: 15px; }
++    ol, ul { margin: 0; padding-left: 20px; color: #33383f; font-size: 15px; }
++    li { margin-bottom: 6px; }
++    .card {
++      background: #fff;
++      border: 1px solid #e5e7eb;
++      border-radius: 14px;
++      padding: 20px 22px;
++    }
++    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
++    .btn {
++      display: inline-block;
++      padding: 12px 18px;
++      border-radius: 10px;
++      font-weight: 700;
++      font-size: 14px;
++      text-decoration: none;
++    }
++    .btn-primary { background: #0a7d3d; color: #fff; }
++    .btn-secondary { background: #eef2f1; color: #0a7d3d; }
++    .retain {
++      background: #fff8e6;
++      border: 1px solid #f2dfa1;
++      border-radius: 10px;
++      padding: 14px 16px;
++      font-size: 14px;
++      color: #5c4a00;
++    }
++    footer {
++      margin-top: 36px;
++      padding-top: 20px;
++      border-top: 1px solid #e5e7eb;
++      font-size: 14px;
++    }
++    footer a { color: #0a7d3d; text-decoration: none; font-weight: 600; }
++    .brand {
++      display: inline-block;
++      font-weight: 800;
++      letter-spacing: 0.02em;
++      color: #0a7d3d;
++      margin-bottom: 18px;
++      font-size: 14px;
++      text-transform: uppercase;
++    }
++  </style>
++</head>
++<body>
++  <div class="wrap">
++    <span class="brand">AHA DATASUB</span>
++    <header>
++      <h1>Delete Your Account</h1>
++      <p class="sub">How to permanently delete your AHA DATASUB account and what happens to your data.</p>
++    </header>
++
++    <section class="card">
++      <h2>Option 1 — Delete it yourself in the app (instant)</h2>
++      <ol>
++        <li>Open the AHA DATASUB app and log in.</li>
++        <li>Go to <strong>Profile</strong> &rarr; <strong>Deactivate / Delete Account</strong>.</li>
++        <li>Choose <strong>Delete account</strong>, confirm with your PIN or password.</li>
++        <li>Your wallet balance must be ₦0 before deletion &mdash; use or withdraw any remaining balance first.</li>
++      </ol>
++    </section>
++
++    <section class="card">
++      <h2>Option 2 — Can't log in? Request it here</h2>
++      <p>If you no longer have access to the app or your account, send us a deletion request with your registered phone number and we will delete it for you, usually within 5 business days.</p>
++      <div class="actions">
++        <a class="btn btn-primary" href="https://wa.me/${escapeHtml(whatsappDigits)}?text=${waText}">Request via WhatsApp</a>
++        <a class="btn btn-secondary" href="mailto:${escapeHtml(primaryEmail)}?subject=${mailSubject}&body=${mailBody}">Request via Email</a>
++      </div>
++    </section>
++
++    <section>
++      <h2>What gets deleted</h2>
++      <ul>
++        <li>Your profile information (name, email, phone number, photo)</li>
++        <li>Your login credentials and saved PIN/password</li>
++        <li>Your saved beneficiaries and app preferences</li>
++      </ul>
++    </section>
++
++    <section>
++      <h2>What we keep, and why</h2>
++      <div class="retain">
++        Transaction and wallet records are retained for a period after deletion where required by Nigerian financial
++        regulation and for fraud/dispute investigation, after which they are removed. This data is kept securely
++        and is not used for any other purpose once your account is deleted.
++      </div>
++    </section>
++
++    <footer>
++      <p>
++        Contact us: <a href="mailto:${escapeHtml(params.supportEmail)}">${escapeHtml(params.supportEmail)}</a>
++        &nbsp;|&nbsp;
++        <a href="https://wa.me/${escapeHtml(whatsappDigits)}">WhatsApp ${escapeHtml(params.supportWhatsApp)}</a>
++      </p>
++    </footer>
++  </div>
++</body>
++</html>`;
++}
+diff --git a/imam_datasub_backend/src/routes/legal.routes.ts b/imam_datasub_backend/src/routes/legal.routes.ts
+index 9ead99a..2aa4d8b 100644
+--- a/imam_datasub_backend/src/routes/legal.routes.ts
++++ b/imam_datasub_backend/src/routes/legal.routes.ts
+@@ -1,5 +1,6 @@
+ ﻿import { Router } from 'express';
+ import { renderLegalPage } from '../lib/render-legal-page.js';
++import { renderDeleteAccountPage } from '../lib/render-delete-account-page.js';
+ import { EFFECTIVE_DATE, PRIVACY_SECTIONS, TERMS_SECTIONS } from '../lib/legal-content.js';
+ 
+ export const legalRoutes = Router();
+@@ -33,3 +34,16 @@ legalRoutes.get('/terms', (_req, res) => {
+   );
+ });
+ 
++// Public "Delete account URL" required by Google Play's Data safety form.
++// Must be reachable with no login and no app install. See
++// render-delete-account-page.ts for the actual content/steps.
++legalRoutes.get('/delete-account', (_req, res) => {
++  res.type('html').send(
++    renderDeleteAccountPage({
++      supportEmail: SUPPORT_EMAIL,
++      supportWhatsApp: SUPPORT_WHATSAPP
++    })
++  );
++});
++
++

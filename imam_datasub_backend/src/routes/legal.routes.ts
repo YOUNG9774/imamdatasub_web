@@ -1,5 +1,6 @@
 ﻿import { Router } from 'express';
 import { renderLegalPage } from '../lib/render-legal-page.js';
+import { renderDeleteAccountPage } from '../lib/render-delete-account-page.js';
 import { EFFECTIVE_DATE, PRIVACY_SECTIONS, TERMS_SECTIONS } from '../lib/legal-content.js';
 
 export const legalRoutes = Router();
@@ -32,4 +33,17 @@ legalRoutes.get('/terms', (_req, res) => {
     })
   );
 });
+
+// Public "Delete account URL" required by Google Play's Data safety form.
+// Must be reachable with no login and no app install. See
+// render-delete-account-page.ts for the actual content/steps.
+legalRoutes.get('/delete-account', (_req, res) => {
+  res.type('html').send(
+    renderDeleteAccountPage({
+      supportEmail: SUPPORT_EMAIL,
+      supportWhatsApp: SUPPORT_WHATSAPP
+    })
+  );
+});
+
 
