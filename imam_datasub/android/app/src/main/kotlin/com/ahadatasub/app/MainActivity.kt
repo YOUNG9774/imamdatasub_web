@@ -1,4 +1,4 @@
-package com.imamdatasub.app
+package com.ahadatasub.app
 
 import android.content.pm.PackageManager
 import android.content.pm.ApplicationInfo
@@ -17,9 +17,9 @@ import java.util.concurrent.Executor
 
 class MainActivity : FlutterFragmentActivity() {
 
-    private val CHANNEL = "com.imamdatasub.app/security"
-    private val BIOMETRIC_CHANNEL = "com.imamdatasub.app/biometric"
-    private val INTEGRITY_CHANNEL = "com.imamdatasub.app/integrity"
+    private val CHANNEL = "com.ahadatasub.app/security"
+    private val BIOMETRIC_CHANNEL = "com.ahadatasub.app/biometric"
+    private val INTEGRITY_CHANNEL = "com.ahadatasub.app/integrity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -1,0 +1,50 @@
+diff --git a/imam_datasub/android/app/src/main/AndroidManifest.xml b/imam_datasub/android/app/src/main/AndroidManifest.xml
+index 3fa1382..87f122f 100644
+--- a/imam_datasub/android/app/src/main/AndroidManifest.xml
++++ b/imam_datasub/android/app/src/main/AndroidManifest.xml
+@@ -16,6 +16,13 @@
+     <uses-permission android:name="android.permission.VIBRATE" />
+     <uses-permission android:name="android.permission.WAKE_LOCK" />
+ 
++    <!-- Opt out of Advertising ID collection. This app does not use ads or
++         ad attribution, so the AD_ID permission (auto-added transitively by
++         Firebase Analytics/Play Services) is explicitly removed. -->
++    <uses-permission
++        android:name="com.google.android.gms.permission.AD_ID"
++        tools:node="remove" />
++
+     <!-- No CAMERA / storage / media permissions: profile pictures use a
+          generated initials avatar, not a device photo. Receipt downloads
+          (receipt_service.dart) use getTemporaryDirectory() and
+diff --git a/imam_datasub/android/app/src/main/kotlin/com/ahadatasub/app/MainActivity.kt b/imam_datasub/android/app/src/main/kotlin/com/ahadatasub/app/MainActivity.kt
+index a279be3..7f502e3 100644
+--- a/imam_datasub/android/app/src/main/kotlin/com/ahadatasub/app/MainActivity.kt
++++ b/imam_datasub/android/app/src/main/kotlin/com/ahadatasub/app/MainActivity.kt
+@@ -17,9 +17,9 @@ import java.util.concurrent.Executor
+ 
+ class MainActivity : FlutterFragmentActivity() {
+ 
+-    private val CHANNEL = "com.imamdatasub.app/security"
+-    private val BIOMETRIC_CHANNEL = "com.imamdatasub.app/biometric"
+-    private val INTEGRITY_CHANNEL = "com.imamdatasub.app/integrity"
++    private val CHANNEL = "com.ahadatasub.app/security"
++    private val BIOMETRIC_CHANNEL = "com.ahadatasub.app/biometric"
++    private val INTEGRITY_CHANNEL = "com.ahadatasub.app/integrity"
+ 
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+diff --git a/imam_datasub/lib/core/security/biometric_service.dart b/imam_datasub/lib/core/security/biometric_service.dart
+index 64f2e20..aeb2704 100644
+--- a/imam_datasub/lib/core/security/biometric_service.dart
++++ b/imam_datasub/lib/core/security/biometric_service.dart
+@@ -4,8 +4,8 @@ import '../utils/logger.dart';
+ enum BiometricType { fingerprint, face, none }
+ 
+ class BiometricService {
+-  static const _channel = MethodChannel('com.imamdatasub.app/biometric');
+-  static const _securityChannel = MethodChannel('com.imamdatasub.app/security');
++  static const _channel = MethodChannel('com.ahadatasub.app/biometric');
++  static const _securityChannel = MethodChannel('com.ahadatasub.app/security');
+ 
+   // ── Availability ──────────────────────────────────────────
+   Future<bool> isAvailable() async {

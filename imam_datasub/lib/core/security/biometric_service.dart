@@ -4,8 +4,8 @@ import '../utils/logger.dart';
 enum BiometricType { fingerprint, face, none }
 
 class BiometricService {
-  static const _channel = MethodChannel('com.imamdatasub.app/biometric');
-  static const _securityChannel = MethodChannel('com.imamdatasub.app/security');
+  static const _channel = MethodChannel('com.ahadatasub.app/biometric');
+  static const _securityChannel = MethodChannel('com.ahadatasub.app/security');
 
   // ── Availability ──────────────────────────────────────────
   Future<bool> isAvailable() async {
